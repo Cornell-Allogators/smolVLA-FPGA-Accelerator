@@ -1,0 +1,12 @@
+cmake
+huggingface_hub
+./submodules/lerobot/
+./submodules/allo/
+numpy
+matplotlib
+torch
+torchvision
+scipy
+pandas
+tqdm
+ipykernel
