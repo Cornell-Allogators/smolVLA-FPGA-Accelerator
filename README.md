@@ -23,4 +23,5 @@ error: failed-wheel-build-for-install
 
 To solve this error try downloading a different version of cmake and ninja using:
 ```bash 
-  conda install -c conda-forge cmake=3.27.9 ninja=1.11.1```
+  conda install -c conda-forge cmake=3.27.9 ninja=1.11.1
+```
