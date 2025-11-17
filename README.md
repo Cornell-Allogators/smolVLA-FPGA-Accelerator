@@ -25,3 +25,9 @@ To solve this error try downloading a different version of cmake and ninja using
 ```bash 
   conda install -c conda-forge cmake=3.27.9 ninja=1.11.1
 ```
+
+
+```
+To run vitis backend run:
+source /work/shared/common/allo/vitis_2023.2_u280.sh
+```

@@ -1,7 +1,7 @@
 cmake
 huggingface_hub
 -e ./submodules/allo/
--e ./submodules/lerobot/
+# -e ./submodules/lerobot/
 numpy
 matplotlib
 torch
