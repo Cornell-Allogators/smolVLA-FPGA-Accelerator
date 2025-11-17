@@ -1,52 +1,49 @@
-import allo, math
-from allo.ir.types import int8, int16, float32, bfloat16
+import allo
+from allo.ir.types import float32
+from pathlib import Path
+import sys
 
-import torch
-import torch.nn as nn
-import math
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-# Simple MLP model
+from common_kernels.kernels import gemm, add_bias, gelu_approx
 
-class SimpleMLP(nn.Module):
-    def __init__(self, input_dim=768, hidden_dim=3072, output_dim=768, activation=None):
-        super().__init__()
-        # allow passing None to use a default GELU activation
-        if activation is None:
-            activation = nn.GELU()
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.act = activation
-        self.fc2 = nn.Linear(hidden_dim, output_dim)
+M = 3            # batch * seq (e.g. 1 * 3)
+D_in = 768       # input feature dim
+H = 3072         # hidden dim
+D_out = 768      # output dim
 
-    def forward(self, x):
-        # x: (B, S, D) -> treat last dim as feature dimension
-        return self.fc2(self.act(self.fc1(x)))
-    
-model = SimpleMLP()
-model.eval()
 
-example_inputs = [torch.rand(1, 3, 768)]
-# Generate the LLVM backend but keep weights as explicit arguments so the
-# HLS generator will emit them as pointer arguments (so they can be streamed
-# in over AXI) instead of embedding large static arrays into the C++.
-llvm_mod = allo.frontend.from_pytorch(
-    model, example_inputs=example_inputs, weights_as_args=True
-)
+def mlp_top(A: float32[M, D_in], W1: float32[D_in, H], b1: float32[H], W2: float32[H, D_out], b2: float32[D_out]) -> float32[M, D_out]:
+    # FC1: (M x D_in) * (D_in x H) -> (M x H)
+    C1 = gemm[M, D_in, H](A, W1)
+    C1b = add_bias[M, H](C1, b1)
+    A1 = gelu_approx[M, H](C1b)
 
-golden = model(*example_inputs)
-np_inputs = [x.detach().numpy() for x in example_inputs]
-res = llvm_mod(*np_inputs)
-# Allow small numerical differences between the PyTorch reference and the
-# generated backend (float32 rounding/ordering). Relax tolerances accordingly.
-torch.testing.assert_close(
-    res, golden.detach().numpy(), rtol=1e-2, atol=1e-2
-)
-print("Passed!")
+    # FC2: (M x H) * (H x D_out) -> (M x D_out)
+    C2 = gemm[M, H, D_out](A1, W2)
+    # add output bias
+    Out: float32[M, D_out] = 0
+    for i, j in allo.grid(M, D_out):
+        Out[i, j] = C2[i, j] + b2[j]
+    return Out
 
-# Generate VHLS code with weights passed as function arguments. The
-# backend postprocessing will add #pragma HLS interface m_axi for these
-# pointer arguments so the host can stream weights over AXI.
-mod = allo.frontend.from_pytorch(
-    model, example_inputs=example_inputs, target="vhls", weights_as_args=True
-)
 
-print("Done")
+if __name__ == "__main__":
+    # Customize / optimize individual kernels first
+    # instantiate and customize the GEMM kernel for the two shape pairs
+    s_gemm1 = allo.customize(gemm, instantiate=[M, D_in, H])
+    s_gemm1.pipeline("j")
+
+    s_gemm2 = allo.customize(gemm, instantiate=[M, H, D_out])
+    s_gemm2.reorder("k", "j")
+    s_gemm2.pipeline("j")
+
+    s_act = allo.customize(gelu_approx, instantiate=[M, H])
+    s_act.pipeline("j")
+
+    # Create schedule for top-level function and compose the optimized kernels
+    s = allo.customize(mlp_top)
+    s.compose([s_gemm1, s_gemm2, s_act])
+
+    # Print the composed, optimized module (this shows kernels inlined/linked into top)
+    print(s.module)
