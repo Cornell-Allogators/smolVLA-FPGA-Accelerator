@@ -8,15 +8,15 @@ from matrix_multiplies import mm_transpose
 
 def matmul_one[
     T: (bfloat16, float32),
-    P: int16,
-    Q: int16,
-    R: int16
+    A_L: int16, #action length
+    H_D: int16, #head dimension
+    V_L: int16, #VLM length
 ](
-    A: "T[P, Q]",
-    B: "T[Q, R]",
+    Q: "T[A_L, H_D]",
+    K: "T[V_L, H_D]",
     scale: "T",
-    out_AB: "T[P, R]"
+    out_QK: "T[A_L, V_L]"
 ):
-    mm_transpose[T, P, Q, R](A, B, out_AB)
-    for i0, j0 in allo.grid(P, R):
-        out_AB[i0, j0] = out_AB[i0, j0]/scale
+    mm_transpose[T, A_L, H_D, V_L](Q, K, out_QK)
+    for i0, j0 in allo.grid(A_L, V_L):
+        out_QK[i0, j0] = out_QK[i0, j0]/scale
