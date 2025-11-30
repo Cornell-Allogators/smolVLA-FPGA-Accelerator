@@ -30,6 +30,37 @@ def softmax_baseline[
         for j3 in allo.grid(D):
             A[i0, j3] = A[i0, j3] / sum_exp_A
 
+
+def softmax_return[
+    T: (float32, bfloat16),
+    L: int16,
+    D: int16
+](
+    A: "T[L, D]"
+) -> "T[L, D]":
+    """
+    Softmax that returns output instead of modifying in-place.
+    Better for dataflow architectures.
+    """
+    B: "T[L, D]" = 0.0
+    
+    for i0 in allo.grid(L):  # loop through each row
+        max_val = A[i0, 0]
+        for j0 in allo.grid(D):
+            if A[i0, j0] > max_val:
+                max_val = A[i0, j0]
+        
+        sum_exp = 0.0
+        for j1 in allo.grid(D):
+            B[i0, j1] = allo.exp(A[i0, j1] - max_val)
+            sum_exp += B[i0, j1]
+        
+        for j2 in allo.grid(D):
+            B[i0, j2] = B[i0, j2] / sum_exp
+    
+    return B
+
+
 if __name__ == "__main__":
     A = np.random.rand(10, 10).astype(np.float32)
     A2 = A.copy()

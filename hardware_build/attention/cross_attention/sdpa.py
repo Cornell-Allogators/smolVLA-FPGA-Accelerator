@@ -4,8 +4,8 @@ from allo.ir.types import float32, bfloat16, int32, int16, int8, int4
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[2]))
-from matrix_multiplies import mm_transpose, mm1
-from attention.cross_attention.softmax import softmax_baseline
+from matrix_multiplies import mm_transpose, mm1, mm_transpose_return, mm1_return
+from attention.cross_attention.softmax import softmax_baseline, softmax_return
 
 
 def numpy_softmax(x, axis=-1):
@@ -54,3 +54,71 @@ def sdpa[
     # mm1[T, P, Q, R]: A[P,Q] @ B[Q,R] = out[P,R]
     # B[L, L] @ V[L, D_h] = out[L, D_h]
     mm1[T, L, L, D_h](B, V, out)
+
+
+def sdpa_with_return[
+    T: (bfloat16, float32),
+    L: int16,
+    D_h: int16
+](
+    Q: "T[L, D_h]",
+    K: "T[L, D_h]",
+    V: "T[L, D_h]",
+    scale: "T"
+) -> "T[L, D_h]":
+    """
+    SDPA variant that returns the output instead of modifying in-place.
+    Better for dataflow as it has clear producer/consumer relationship.
+    This avoids the read-write conflict on output arrays in dataflow regions.
+    """
+    # Compute Q @ K^T
+    B: "T[L, L]" = 0.0
+    mm_transpose[T, L, D_h, L](Q, K, B)
+    
+    # Scale by divisor
+    for i, j in allo.grid(L, L):
+        B[i, j] = B[i, j] / scale
+    
+    # Apply row-wise softmax
+    softmax_baseline[T, L, L](B)
+    
+    # Compute B @ V and return
+    out: "T[L, D_h]" = 0.0
+    mm1[T, L, L, D_h](B, V, out)
+    
+    return out
+
+
+def sdpa_dataflow[
+    T: (bfloat16, float32),
+    L: int16,
+    D_h: int16
+](
+    Q: "T[L, D_h]",
+    K: "T[L, D_h]",
+    V: "T[L, D_h]",
+    scale: "T"
+) -> "T[L, D_h]":
+    """
+    Fully dataflow-optimized SDPA using only return functions.
+    All subfunctions return values creating a clear producer/consumer chain:
+    Q,K -> mm_transpose_return -> B -> scale -> softmax_return -> B_softmax -> mm1_return -> out
+    
+    This enables true streaming dataflow where each stage can start as soon as
+    the previous stage produces data.
+    """
+    # Stage 1: Compute Q @ K^T and return
+    B: "T[L, L]" = mm_transpose_return[T, L, D_h, L](Q, K)
+    
+    # Stage 2: Scale (element-wise, can't avoid in-place)
+    B_scaled: "T[L, L]" = 0.0
+    for i, j in allo.grid(L, L, name="scale"):
+        B_scaled[i, j] = B[i, j] / scale
+    
+    # Stage 3: Apply softmax and return
+    B_softmax: "T[L, L]" = softmax_return[T, L, L](B_scaled)
+    
+    # Stage 4: Final matrix multiply and return
+    out: "T[L, D_h]" = mm1_return[T, L, L, D_h](B_softmax, V)
+    
+    return out
