@@ -3,7 +3,7 @@ from allo.ir.types import int8, int16, float32, bfloat16, int32
 
 
 def mm1[
-    T: (int32, float32), # type: ignore
+    T: (int32, float32, bfloat16), # type: ignore
     P: int16, # type: ignore
     Q: int16, # type: ignore
     R: int16 # type: ignore

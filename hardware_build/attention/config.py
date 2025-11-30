@@ -36,4 +36,7 @@ class VLMAttentionConfig:
     NUM_LAYERS = 12
     NUM_TOKENS = 1024
 
+# Alias for self-attention (uses VLM config)
+SelfAttentionConfig = VLMAttentionConfig
+
 
