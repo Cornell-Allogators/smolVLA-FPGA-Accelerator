@@ -122,3 +122,88 @@ def sdpa_dataflow[
     out: "T[L, D_h]" = mm1_return[T, L, L, D_h](B_softmax, V)
     
     return out
+
+
+def sdpa_streaming[
+    T: (bfloat16, float32, int4, int8),
+    L: int16,
+    D_h: int16
+](
+    Q: "T[L, D_h]",
+    K: "T[L, D_h]",
+    V: "T[L, D_h]",
+    scale: "float32",
+    out: "T[L, D_h]"
+):
+    """
+    Row-streaming SDPA that processes one output row at a time.
+    
+    Supports int4/int8 quantized inputs with mixed-precision compute:
+    - Integer matmul with int32 accumulator for int4/int8 types
+    - Floating-point softmax (required for exp/div operations)
+    - Output quantized back to input type T
+    
+    Key insight: Softmax is row-independent. Once we compute a complete row
+    of Q @ K^T, we can immediately apply softmax to that row and compute
+    the corresponding output row, all while using only O(L) intermediate storage
+    instead of O(L^2).
+    
+    Memory: 2 * L floats for row buffers vs L * L floats for full materialization
+    For L=1024, float32: 8KB vs 4MB = 512x reduction!
+    
+    Pipeline structure (per row i):
+      1. Compute row i of Q @ K^T (dot products with all K rows)
+      2. Scale the row
+      3. Apply softmax to the row (requires full row for max/sum)
+      4. Compute row i of output = softmax_row @ V
+    """
+    # Row buffers - use float32 for softmax (exp/div require floating point)
+    attn_row: "float32[L]"      # One row of attention scores (after Q @ K^T)
+    softmax_row: "float32[L]"   # One row after softmax
+    
+    # Process one output row at a time
+    for i in allo.grid(L, name="row_loop"):
+        
+        # ===== Stage 1: Compute row i of Q @ K^T =====
+        # attn_row[j1] = sum_k1 Q[i,k1] * K[j1,k1] (K transposed)
+        for j1 in allo.grid(L, name="mm_j"):
+            # Use int32 accumulator for integer types to prevent overflow
+            acc: "int32" = 0
+            for k1 in allo.grid(D_h, name="mm_k"):
+                q_val: "int32" = Q[i, k1]
+                k_val: "int32" = K[j1, k1]
+                acc += q_val * k_val
+            # Convert to float32 and scale
+            acc_float: "float32" = acc
+            attn_row[j1] = acc_float / scale
+        
+        # ===== Stage 2: Softmax on attn_row =====
+        # Find max for numerical stability
+        max_val: "float32" = attn_row[0]
+        for j2 in allo.grid(L, name="max_j"):
+            if attn_row[j2] > max_val:
+                max_val = attn_row[j2]
+        
+        # Compute exp and sum
+        sum_exp: "float32" = 0.0
+        for j3 in allo.grid(L, name="exp_j"):
+            exp_val: "float32" = allo.exp(attn_row[j3] - max_val)
+            softmax_row[j3] = exp_val
+            sum_exp += exp_val
+        
+        # Normalize
+        for j4 in allo.grid(L, name="norm_j"):
+            softmax_row[j4] = softmax_row[j4] / sum_exp
+        
+        # ===== Stage 3: Compute row i of output = softmax_row @ V =====
+        # out[i,d] = sum_j5 softmax_row[j5] * V[j5,d]
+        for d in allo.grid(D_h, name="out_d"):
+            # Use float32 accumulator for mixed precision
+            acc2: "float32" = 0.0
+            for j5 in allo.grid(L, name="out_j"):
+                v_val: "float32" = V[j5, d]
+                acc2 += softmax_row[j5] * v_val
+            # Quantize back to output type T
+            out_val: T = acc2
+            out[i, d] = out_val
+
