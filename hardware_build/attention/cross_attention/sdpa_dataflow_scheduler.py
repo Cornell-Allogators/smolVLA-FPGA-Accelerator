@@ -327,9 +327,6 @@ def schedule_sdpa_streaming_quantized_tiled(
     # Outer: L/tile_factor iterations
     # Inner: tile_factor iterations (this gets pipelined to II=1)
     s.split(row_loop["j1"], factor=tile_factor)
-    # s.split(row_loop["j2"], factor=tile_factor)
-    # s.split(row_loop["j3"], factor=tile_factor)
-    # s.split(row_loop["j4"], factor=tile_factor)
 
     # After split, need to re-fetch loops to get the new split loops
     loops = s.get_loops()
@@ -344,28 +341,41 @@ def schedule_sdpa_streaming_quantized_tiled(
     s.pipeline(row_loop["k1"])
     
     # ===== Stage 2: Array Partitioning =====
-    # Partition Q, K on D_h dimension (complete, since D_h=64)
-    # s.partition(s.Q, partition.Cyclic, dim=1, factor=tile_factor)
-    # s.partition(s.K, partition.Cyclic, dim=1, factor=tile_factor)
-    # s.partition(s.V, partition.Cyclic, dim=1, factor=tile_factor)
-    
-    s.partition(s.Q, partition.Complete, dim=2)
-    s.partition(s.K, partition.Complete, dim=2)
-    s.partition(s.V, partition.Complete, dim=2)
+    # s.partition(s.Q, partition.Complete, dim=2)
+    # s.partition(s.K, partition.Complete, dim=2)
+    # s.partition(s.V, partition.Complete, dim=0)
+    # s.partition(s.out, partition.Block, factor=64, dim=2)
+    # s.partition(s.softmax_row, partition.Complete, dim=1)  #this partition breaks the norm loop 
+
     
     # Cyclic partition attn_row and softmax_row by tile_factor
     # This allows parallel writes to tile_factor elements in the inner loop
-    s.partition(s.attn_row, partition.Cyclic, dim=1, factor=tile_factor)
-    s.partition(s.softmax_row, partition.Cyclic, dim=1, factor=tile_factor)
+    # s.partition(s.attn_row, partition.Cyclic, dim=1, factor=tile_factor)
+    # s.partition(s.softmax_row, partition.Cyclic, dim=1, factor=tile_factor)
     
     
     # ===== Stage 3: Pipeline softmax passes =====
     s.pipeline(row_loop["j2"])  # exp_j loop
     s.pipeline(row_loop["j3"])  # norm_j loop
     
-    # ===== Stage 4: Pipeline output computation =====
-    s.pipeline(row_loop["d"])   # out_d loop
-    # s.unroll(row_loop["j4"])    # Fully unroll output dimension for max parallelism
+    # ===== Stage 4: Output computation with reordered loops =====
+    # Original: for d (64): for j4 (128): acc += softmax[j4] * V[j4,d]
+    # Reordered: for j4 (128): for d (64): acc[d] += softmax[j4] * V[j4,d]
+    # 
+    # With j4 outer, d inner:
+    # - Each j4 iteration reads softmax_row[j4] once, broadcasts to 64 multipliers
+    # - Reads V[j4, 0:63] (64 values) - needs V partitioned on dim=2
+    # - 64 parallel accumulators, one per output element
+    # - Depth is just adder latency (~7 cycles) not 128-element reduction tree
+    s.reorder(row_loop["j4"], row_loop["d"])
+    
+    # Re-fetch loops after reorder
+    loops = s.get_loops()
+    row_loop = loops["row_loop"]
+    
+    # Pipeline the outer j4 loop (now 128 iterations)
+    # Inner d loop (64 iterations) gets unrolled for parallel MACs
+    s.pipeline(row_loop["j4"])
     
     dtype_str = "int4" if A_T == int4 else "int8"
     project_name = f"sdpa_streaming_quantized_{dtype_str}_tiled_{tile_factor}_{mode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.prj"

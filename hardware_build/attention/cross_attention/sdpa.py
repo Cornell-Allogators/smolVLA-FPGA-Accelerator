@@ -203,8 +203,7 @@ def sdpa_streaming[
             # Use float32 accumulator for mixed precision
             acc2: "float32" = 0.0
             for j4 in allo.grid(L, name="out_j"):
-                v_val: "T" = V[j4, d]
-                acc2 += softmax_row[j4] * v_val
+                acc2 += softmax_row[j4] * V[j4, d]
             # Quantize back to output type T
             out_val: T = acc2
             out[i, d] = out_val
