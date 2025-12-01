@@ -197,7 +197,7 @@ def sdpa_streaming[
         for j3 in allo.grid(L, name="norm_j"):
             softmax_row[j3] = softmax_row[j3] / sum_exp
         # ===== Stage 2: Compute output row i =====
-        acc_out: "float32[D_h]" = 0.0
+        acc_out: "int32[D_h]" = 0.0
         
         for j4 in allo.grid(L, name="out_j"):
             for d in allo.grid(D_h, name="out_d"):
