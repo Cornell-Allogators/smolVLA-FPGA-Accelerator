@@ -196,15 +196,15 @@ def sdpa_streaming[
         # Normalize
         for j3 in allo.grid(L, name="norm_j"):
             softmax_row[j3] = softmax_row[j3] / sum_exp
+        # ===== Stage 2: Compute output row i =====
+        acc_out: "float32[D_h]" = 0.0
         
-        # ===== Stage 3: Compute row i of output = softmax_row @ V =====
-        # out[i,d] = sum_j5 softmax_row[j5] * V[j5,d]
-        for d in allo.grid(D_h, name="out_d"):
-            # Use float32 accumulator for mixed precision
-            acc2: "float32" = 0.0
-            for j4 in allo.grid(L, name="out_j"):
-                acc2 += softmax_row[j4] * V[j4, d]
-            # Quantize back to output type T
-            out_val: T = acc2
-            out[i, d] = out_val
+        for j4 in allo.grid(L, name="out_j"):
+            for d in allo.grid(D_h, name="out_d"):
+                acc_out[d] += softmax_row[j4] * V[j4, d]
+        
+        # Write outputs (separate loop to keep inner loops perfectly nested)
+        for d2 in allo.grid(D_h, name="out_write"):
+            out_val: T = acc_out[d2]
+            out[i, d2] = out_val
 

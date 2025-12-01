@@ -346,6 +346,7 @@ def schedule_sdpa_streaming_quantized_tiled(
     # s.partition(s.V, partition.Complete, dim=0)
     # s.partition(s.out, partition.Block, factor=64, dim=2)
     # s.partition(s.softmax_row, partition.Complete, dim=1)  #this partition breaks the norm loop 
+    s.partition(s.acc_out, partition.Complete, dim=1)  
 
     
     # Cyclic partition attn_row and softmax_row by tile_factor
@@ -358,24 +359,15 @@ def schedule_sdpa_streaming_quantized_tiled(
     s.pipeline(row_loop["j2"])  # exp_j loop
     s.pipeline(row_loop["j3"])  # norm_j loop
     
-    # ===== Stage 4: Output computation with reordered loops =====
-    # Original: for d (64): for j4 (128): acc += softmax[j4] * V[j4,d]
-    # Reordered: for j4 (128): for d (64): acc[d] += softmax[j4] * V[j4,d]
-    # 
-    # With j4 outer, d inner:
-    # - Each j4 iteration reads softmax_row[j4] once, broadcasts to 64 multipliers
-    # - Reads V[j4, 0:63] (64 values) - needs V partitioned on dim=2
-    # - 64 parallel accumulators, one per output element
-    # - Depth is just adder latency (~7 cycles) not 128-element reduction tree
-    s.reorder(row_loop["j4"], row_loop["d"])
-    
-    # Re-fetch loops after reorder
-    loops = s.get_loops()
-    row_loop = loops["row_loop"]
-    
-    # Pipeline the outer j4 loop (now 128 iterations)
-    # Inner d loop (64 iterations) gets unrolled for parallel MACs
+    # ===== Stage 4: Output computation =====
+    # Kernel now has j4 outer (L=128), d inner (D_h=64)
+    # Pipeline j4: each iteration does 64 parallel MACs (d gets unrolled)
+    # Expected: II=7 (accumulator dependency), Depth=~7 (just fadd latency)
+    # Much better than previous Depth=909 with 128-element reduction tree
     s.pipeline(row_loop["j4"])
+    
+    # Also pipeline the output write loop
+    s.pipeline(row_loop["d2"])
     
     dtype_str = "int4" if A_T == int4 else "int8"
     project_name = f"sdpa_streaming_quantized_{dtype_str}_tiled_{tile_factor}_{mode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.prj"
