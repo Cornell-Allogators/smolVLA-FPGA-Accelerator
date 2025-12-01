@@ -356,8 +356,13 @@ def schedule_sdpa_streaming_quantized_tiled(
     
     
     # ===== Stage 3: Pipeline softmax passes =====
-    s.pipeline(row_loop["j2"])  # exp_j loop
-    s.pipeline(row_loop["j3"])  # norm_j loop
+    # exp_j loop: computes exp, stores to softmax_row, and accumulates sum_exp
+    # The accumulation has II=7 due to fadd latency, but this is acceptable:
+    # - Total cycles: 128 * 7 = 896 cycles per row (vs 128*64=8192 for matmul)
+    # - The exp() computation can overlap with the fadd pipeline
+    s.pipeline(row_loop["j2"])       # exp_j loop. Not good with pipeline try unroll
+    s.unroll(row_loop["j2"], factor=L//2)      # exp_j loop
+    s.pipeline(row_loop["j3"])       # norm_j loop - normalize softmax
     
     # ===== Stage 4: Output computation =====
     # Kernel now has j4 outer (L=128), d inner (D_h=64)
@@ -376,6 +381,76 @@ def schedule_sdpa_streaming_quantized_tiled(
             out = np.zeros((L, D_h), dtype=N_T)
             s_llvm = s.build(project=project_name)
             # Create quantized test data
+            Q_quant = np.random.randint(-8, 8, (L, D_h)).astype(N_T)
+            K_quant = np.random.randint(-8, 8, (L, D_h)).astype(N_T)
+            V_quant = np.random.randint(-8, 8, (L, D_h)).astype(N_T)
+            s_llvm(Q_quant, K_quant, V_quant, scale, out)
+            return out, s
+        case "csyn":
+            s_csyn = s.build(target="vitis_hls", mode="csyn", project=project_name)
+            s_csyn()
+
+
+def schedule_sdpa_streaming_4row_parallel(
+    N_T: np.dtype,
+    A_T: allo.ir.types,
+    P: int = 8,  # Row parallelism factor (8 to hide fadd latency ~7)
+    mode: str = "csyn"
+):
+    """
+    P-row parallel streaming SDPA with P on the outside.
+    
+    Key insight: With P=8 rows processed per batch, we have 8 independent
+    accumulator chains. The exp/sum loop runs sequentially per row, so each
+    row's fadd chain is independent - no cross-iteration dependency within
+    the pipelined inner loop.
+    
+    Loop structure:
+    - row_outer: L//P iterations (e.g., 16 for L=128, P=8)
+    - P loop: outer, processes each row in the batch
+    - Inner loops (j1, j2, j3, j4): pipelined, same as sdpa_streaming
+    
+    This matches the structure of sdpa_streaming but processes P rows per batch.
+    """
+    s = allo.customize(sdpa.sdpa_streaming_4row, instantiate=[A_T, L, D_h, P])
+    
+    loops = s.get_loops()
+    outer_loop = loops["row_outer"]    
+    # Pipeline the inner loops (same pattern as sdpa_streaming)
+    # ===== Stage 1: Matmul Q @ K^T =====
+    # Pipeline j1 (inner loop over L columns)
+    s.split(outer_loop["j1"], factor=16) 
+
+    loops = s.get_loops()
+    outer_loop = loops["row_outer"]
+
+    s.pipeline(outer_loop["j1.inner"])  # Pipeline inner tiled loop
+    s.partition(s.acc_out, partition.Complete, dim=1)  
+    s.partition(s.Q, partition.Complete, dim=2)
+    s.partition(s.max_vals, partition.Complete, dim=1)
+    
+    # ===== Stage 2: Exp and sum =====
+    # Each row has its own sum_exp accumulator, so no cross-row dependency
+    s.pipeline(outer_loop["p2"])
+    
+    # ===== Stage 3: Normalize =====
+    # Pipeline j3 (inner loop over L elements)
+    s.pipeline(outer_loop["j3"])
+    
+    # ===== Stage 4: Output matmul =====
+    # Pipeline j4 (inner loop over L softmax positions)
+    s.pipeline(outer_loop["j4"])
+    
+    # ===== Stage 5: Write outputs =====
+    # Pipeline d2 (inner loop over D_h)
+    s.pipeline(outer_loop["d2"])
+    
+    dtype_str = "int4" if A_T == int4 else "int8"
+    project_name = f"sdpa_streaming_{P}row_parallel_{dtype_str}_{mode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.prj"
+    match mode:
+        case "llvm":
+            out = np.zeros((L, D_h), dtype=N_T)
+            s_llvm = s.build(project=project_name)
             Q_quant = np.random.randint(-8, 8, (L, D_h)).astype(N_T)
             K_quant = np.random.randint(-8, 8, (L, D_h)).astype(N_T)
             V_quant = np.random.randint(-8, 8, (L, D_h)).astype(N_T)
@@ -413,7 +488,11 @@ if __name__ == "__main__":
     # schedule_sdpa_streaming_quantized_baseline(np.int8, int8, mode="csyn")
     
     print("\n=== Testing Quantized SDPA int8 Tiled (16x) ===")
-    schedule_sdpa_streaming_quantized_tiled(np.int8, int8, tile_factor=16, mode="csyn")
+    # schedule_sdpa_streaming_quantized_tiled(np.int8, int8, tile_factor=16, mode="csyn")
+    
+    # 4-row parallel version - achieves II=1 on accumulator loops
+    print("\n=== Testing 4-Row Parallel SDPA int8 ===")
+    schedule_sdpa_streaming_4row_parallel(np.int8, int8, P=8, mode="csyn")
     
     # Uncomment to test int4
     # print("\n=== Testing Quantized SDPA int4 Baseline ===")
