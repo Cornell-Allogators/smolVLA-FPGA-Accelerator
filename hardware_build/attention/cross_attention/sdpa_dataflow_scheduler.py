@@ -417,15 +417,14 @@ def schedule_sdpa_streaming_4row_parallel(
     loops = s.get_loops()
     outer_loop = loops["row_outer"]    
     s.dataflow(outer_loop["i_outer"])  # Dataflow over outer row batches
+    s.unroll(outer_loop["i_outer"], factor=2)
     # Pipeline the inner loops (same pattern as sdpa_streaming)
     # ===== Stage 1: Matmul Q @ K^T =====
     # Pipeline j1 (inner loop over L columns)
-    s.split(outer_loop["j1"], factor=16) 
-
     loops = s.get_loops()
     outer_loop = loops["row_outer"]
 
-    s.pipeline(outer_loop["j1.inner"])  # Pipeline inner tiled loop
+    s.pipeline(outer_loop["j1"])  # Pipeline inner tiled loop
     s.partition(s.acc_out, partition.Complete, dim=1)  
     s.partition(s.Q, partition.Complete, dim=2)
     s.partition(s.max_vals, partition.Complete, dim=1)
