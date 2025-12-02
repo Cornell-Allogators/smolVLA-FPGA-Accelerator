@@ -220,7 +220,7 @@ def sdpa_streaming[
             out[i, d2] = out_val
 
 
-def sdpa_streaming_4row[
+def sdpa_streaming_8row[
     T: (bfloat16, float32, int4, int8),
     L: int16,
     D_h: int16,
@@ -246,17 +246,17 @@ def sdpa_streaming_4row[
     
     This matches the structure of sdpa_streaming but processes P rows per batch.
     """
-    # Row buffers for P rows - each row has its own buffers
-    attn_rows: "float32[P, L]"      # P rows of attention scores
-    softmax_rows: "float32[P, L]"   # P rows after softmax
-    softmax_rows_int: "int16[P, L]" # Scaled softmax for integer MAC
-    max_vals: "float32[P]"          # Max value per row
-    sum_exps: "float32[P]"          # Sum of exp per row
-    acc_out: "int32[P, D_h]"        # Output accumulators for P rows
+
     
     # Process P rows at a time
     for i_outer in allo.grid(L // P, name="row_outer"):
-        
+        # Row buffers for P rows - each row has its own buffers
+        attn_rows: "float32[P, L]"      # P rows of attention scores
+        softmax_rows: "float32[P, L]"   # P rows after softmax
+        softmax_rows_int: "int16[P, L]" # Scaled softmax for integer MAC
+        max_vals: "float32[P]"          # Max value per row
+        sum_exps: "float32[P]"          # Sum of exp per row
+        acc_out: "int32[P, D_h]"        # Output accumulators for P rows
         # ===== Stage 1: Compute P rows of Q @ K^T =====
         # P is outer, j1 is inner (pipelined)
         for p in allo.grid(P, name="mm_p"):

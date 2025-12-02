@@ -412,10 +412,11 @@ def schedule_sdpa_streaming_4row_parallel(
     
     This matches the structure of sdpa_streaming but processes P rows per batch.
     """
-    s = allo.customize(sdpa.sdpa_streaming_4row, instantiate=[A_T, L, D_h, P])
+    s = allo.customize(sdpa.sdpa_streaming_8row, instantiate=[A_T, L, D_h, P])
     
     loops = s.get_loops()
     outer_loop = loops["row_outer"]    
+    s.dataflow(outer_loop["i_outer"])  # Dataflow over outer row batches
     # Pipeline the inner loops (same pattern as sdpa_streaming)
     # ===== Stage 1: Matmul Q @ K^T =====
     # Pipeline j1 (inner loop over L columns)
