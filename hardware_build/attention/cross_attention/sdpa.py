@@ -330,12 +330,14 @@ def self_attention[
     T: (bfloat16, float32, int4, int8),
     L: int16,
     D_h: int16,
+    H: int16, #num heads in parallel
     P: int16  # Parallelism factor (4)
 ](
     X: "T[L, D_h]",
     W_q: "T[D_h, D_h]",
     W_k: "T[D_h, D_h]",
     W_v: "T[D_h, D_h]",
+    W_o: "T[D_h, D_h]",
     scale: "float32",
     out: "T[L, D_h]"
 ):
@@ -356,9 +358,9 @@ def self_attention[
     - Inner loops: pipelined computation for each row
     """
     # ===== QKV Projection Stage =====
-    Q: "T[L, D_h]" = 0.0
-    K: "T[L, D_h]" = 0.0
-    V: "T[L, D_h]" = 0.0
+    Q: "T[H, L, D_h]" = 0.0
+    K: "T[H, L, D_h]" = 0.0
+    V: "T[H, L, D_h]" = 0.0
     
     # ===== QKV Projection (manual matmul-transpose) =====
     # Compute Q = X @ W_q  where W_q is stored as [D_q, D_h]
@@ -386,80 +388,11 @@ def self_attention[
                 acc_v += X[i, k] * W_v[j, k]
             V[i, j] = acc_v
 
-    # ===== SDPA Stage: Process P rows at a time =====
-    for i_outer in allo.grid(L // P, name="row_outer"):
-        # Row buffers for P rows - each row has its own buffers
-        attn_rows: "float32[P, L]"      # P rows of attention scores
-        softmax_rows: "float32[P, L]"   # P rows after softmax
-        softmax_rows_int: "int16[P, L]" # Scaled softmax for integer MAC
-        max_vals: "float32[P]"          # Max value per row
-        sum_exps: "float32[P]"          # Sum of exp per row
-        acc_out: "int32[P, D_h]"        # Output accumulators for P rows
-        # ===== Stage 1: Compute P rows of Q @ K^T =====
-        # P is outer, j1 is inner (pipelined)
-        for p in allo.grid(P, name="mm_p"):
-            i: "int16" = i_outer * P + p
-            for j1 in allo.grid(L, name="mm_j"):
-                # Dot product Q[i,:] @ K[j1,:]
-                acc: "int32" = 0
-                for k1 in allo.grid(D_h, name="mm_k"):
-                    q_val: "int32" = Q[i, k1]
-                    k_val: "int32" = K[j1, k1]
-                    acc += q_val * k_val
-                # Convert to float32 and scale
-                acc_float: "float32" = acc
-                acc_float = acc_float / scale
-                # Track max for this row
-                if j1 == 0:
-                    max_vals[p] = acc_float
-                else:
-                    if acc_float > max_vals[p]:
-                        max_vals[p] = acc_float
-                attn_rows[p, j1] = acc_float
-        
-        # ===== Stage 2: Compute exp and sum for P rows =====
-        # Initialize sum_exps
-        for p_init in allo.grid(P, name="init_sum"):
-            sum_exps[p_init] = 0.0
-        
-        # P is outer, j2 is inner (pipelined)
-        # Each row has its own sum_exp accumulator
-        for j2 in allo.grid(L, name="exp_p"):
-            for p2 in allo.grid(P, name="exp_j"):
-                exp_val: "float32" = allo.exp(attn_rows[p2, j2] - max_vals[p2])
-                softmax_rows[p2, j2] = exp_val
-                sum_exps[p2] += exp_val
+    for h in allo.grid(H, name="head_loop"):
+        # Apply P-row parallel streaming SDPA for each head
+        sdpa_streaming_8row[T, L, D_h, P](Q, K, V, scale, out, name="sdpa")
+    
 
-        # ===== Stage 3: Normalize and scale softmax rows =====
-        # P is outer, j3 is inner (pipelined)
-        softmax_scale: "float32" = 32768.0
-        for p3 in allo.grid(P, name="norm_p"):
-            for j3 in allo.grid(L, name="norm_j"):
-                norm_val: "float32" = softmax_rows[p3, j3] / sum_exps[p3]
-                softmax_scaled: "int16" = norm_val * softmax_scale
-                softmax_rows_int[p3, j3] = softmax_scaled
-                
-        # ===== Stage 4: Initialize output accumulators =====
-        for p_init in allo.grid(P, name="init_p"):
-            for d_init in allo.grid(D_h, name="init_d"):
-                acc_out[p_init, d_init] = 0
-        
-        # ===== Stage 5: Compute output rows with integer arithmetic =====
-        # P is outer, j4 is inner (pipelined), d is innermost
-        for p4 in allo.grid(P, name="out_p"):
-            for j4 in allo.grid(L, name="out_j"):
-                s_val: "int32" = softmax_rows_int[p4, j4]
-                for d in allo.grid(D_h, name="out_d"):
-                    v_val: "int32" = V[j4, d]
-                    acc_out[p4, d] += s_val * v_val
-        
-        # ===== Stage 6: Write outputs - rescale from fixed-point =====
-        for p5 in allo.grid(P, name="write_p"):
-            i_out: "int16" = i_outer * P + p5
-            for d2 in allo.grid(D_h, name="write_d"):
-                rescaled: "int32" = acc_out[p5, d2] >> 15
-                out_val: T = rescaled
-                out[i_out, d2] = out_val
 
 
 
