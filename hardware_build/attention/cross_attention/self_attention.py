@@ -43,7 +43,7 @@ def self_attention[
     - Inner loops: pipelined computation for each row
     """
     # ===== QKV Projection Stage =====
-    Q: T[H, L, D_h]
+    Q: "T[H, L, D_h]"
     K: "T[H, L, D_h]"
     V: "T[H, L, D_h]"
 
@@ -61,7 +61,7 @@ def self_attention[
 
     for h2 in allo.grid(H, name="head_loop_sdp"):
         # Apply P-row parallel streaming SDPA for each head
-        sdpa[T, L, D_h, P, "sdpa"](Q2, K2, V2, scale, out2)
+        sdpa[T, L, D_h, P, "sdpa"](Q[h2], K[h2], V[h2], scale, out[h2])
         
 
 
