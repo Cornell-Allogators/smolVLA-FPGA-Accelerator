@@ -7,6 +7,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 from matrix_multiplies import mm_transpose, mm1, mm_transpose_return, mm1_return
 from attention.cross_attention.softmax import softmax_baseline, softmax_return
 from attention.cross_attention.sdpa import sdpa_streaming_8row as sdpa
+from attention.cross_attention.sdpa_dataflow_scheduler import schedule_sdpa_streaming_4row_parallel as sdpa_schedule
 
 
 
@@ -15,15 +16,15 @@ def self_attention[
     L: int16,
     D_h: int16,
     H: int16, #num heads in parallel
-    P: int16  # Parallelism factor (4)
+    P: int16  # Parallelism factor (8 for 8-row streaming SDPA)
 ](
-    X: "T[L, D_h]",
+    X:   "T[H, L, D_h]",
     W_q: "T[H, D_h, D_h]",
     W_k: "T[H, D_h, D_h]",
     W_v: "T[H, D_h, D_h]",
     W_o: "T[H, D_h, D_h]",
     scale: "float32",
-    out: "T[L, D_h]"
+    out: "T[H, L, D_h]"
 ):
     """
     Self-attention with integrated QKV projection.
@@ -42,37 +43,53 @@ def self_attention[
     - Inner loops: pipelined computation for each row
     """
     # ===== QKV Projection Stage =====
-    Q: "T[H, L, D_h]" = 0.0
-    K: "T[H, L, D_h]" = 0.0
-    V: "T[H, L, D_h]" = 0.0
+    Q: T[H, L, D_h]
+    K: "T[H, L, D_h]"
+    V: "T[H, L, D_h]"
+
+    Q2: "T[L, D_h]" = 0
+    K2: "T[L, D_h]" = 0
+    V2: "T[L, D_h]" = 0
+    out2: "T[L, D_h]" = 0
     
     # ===== QKV Projection (manual matmul-transpose) =====
-    # Compute Q = X @ W_q  where W_q is stored as [D_q, D_h]
-    # mm_transpose semantics: out[i, j] = sum_k X[i,k] * W_q[j,k]
-    #Do this in one large matmul to maximize reuse of X
-    for i in allo.grid(L, name="q_i"):
-        for j in allo.grid(D_h, name="q_j"):
-            acc_q: "T" = 0.0
-            for k in allo.grid(D_h, name="q_k"):
-                acc_q += X[i, k] * W_q[j, k]
-            Q[i, j] = acc_q
+    for h1, i, j in allo.grid(H, L, D_h, name="head_loop"):
+        for k in allo.reduction(D_h, name="prj_dot_product"):
+            Q[h1, i, j] += X[h1, i, k] * W_q[h1, j, k] #standard transpose matmul - TODO: Verify if its supposed to transpose for VLM encoder
+            K[h1, i, j] += X[h1, i, k] * W_k[h1, j, k]
+            V[h1, i, j] += X[h1, i, k] * W_v[h1, j, k]
 
-    # Compute K = X @ W_k
-    for i in allo.grid(L, name="k_i"):
-        for j in allo.grid(D_h, name="k_j"):
-            acc_k: "T" = 0.0
-            for k in allo.grid(D_h, name="k_k"):
-                acc_k += X[i, k] * W_k[j, k]
-            K[i, j] = acc_k
-
-    # Compute V = X @ W_v
-    for i in allo.grid(L, name="v_i"):
-        for j in allo.grid(D_h, name="v_j"):
-            acc_v: "T" = 0.0
-            for k in allo.grid(D_h, name="v_k"):
-                acc_v += X[i, k] * W_v[j, k]
-            V[i, j] = acc_v
-
-    for h in allo.grid(H, name="head_loop"):
+    for h2 in allo.grid(H, name="head_loop_sdp"):
         # Apply P-row parallel streaming SDPA for each head
-        sdpa_streaming_8row[T, L, D_h, P](Q, K, V, scale, out, name="sdpa")
+        sdpa[T, L, D_h, P, "sdpa"](Q2, K2, V2, scale, out2)
+        
+
+
+def self_attention_2[
+    T: (bfloat16, float32, int4, int8),
+    L: int16, # Number of Tokens
+    H: int16, # Number of Heads
+    D_h: int16, # Head Embedding Length
+    D_o: int16, # Output Embedding Length (H*D_h)
+](
+    X:   "T[H, L, D_h]",
+    W_q: "T[H, D_h, D_h]",
+    W_k: "T[H, D_h, D_h]",
+    W_v: "T[H, D_h, D_h]",
+    W_o: "T[H, D_h, D_h]",
+    scale: "float32",
+    out: "T[L, D_o]"
+):
+    pass
+
+H: int16 = 12
+P: int16 = 8
+L: int16 = 1024
+D_h: int16 = 64
+if __name__ == "__main__":
+    s1 = allo.customize(self_attention, instantiate=[int8, L, D_h, H, P])
+    _, s2 = sdpa_schedule(np.int8, int8, P, mode="llvm")
+    # s1.reorder("k", "j")
+    # s1.buffer_at(s1.C, axis="i")
+    print(s2.module)
+    s1.compose(s2, id="sdpa")

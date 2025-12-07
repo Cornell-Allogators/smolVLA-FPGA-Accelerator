@@ -417,7 +417,6 @@ def schedule_sdpa_streaming_4row_parallel(
     loops = s.get_loops()
     outer_loop = loops["row_outer"]    
     s.dataflow(outer_loop["i_outer"])  # Dataflow over outer row batches
-    s.unroll(outer_loop["i_outer"], factor=2)
     # Pipeline the inner loops (same pattern as sdpa_streaming)
     # ===== Stage 1: Matmul Q @ K^T =====
     # Pipeline j1 (inner loop over L columns)
@@ -444,7 +443,6 @@ def schedule_sdpa_streaming_4row_parallel(
     # ===== Stage 5: Write outputs =====
     # Pipeline d2 (inner loop over D_h)
     s.pipeline(outer_loop["d2"])
-    
     dtype_str = "int4" if A_T == int4 else "int8"
     project_name = f"sdpa_streaming_{P}row_parallel_{dtype_str}_{mode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.prj"
     match mode:
@@ -459,12 +457,13 @@ def schedule_sdpa_streaming_4row_parallel(
         case "csyn":
             s_csyn = s.build(target="vitis_hls", mode="csyn", project=project_name)
             s_csyn()
+            return s, s
 
 
 def schedule_self_attention_4row_parallel(
     N_T: np.dtype,
     A_T: allo.ir.types,
-    P: int = 8,  # Row parallelism factor (8 to hide fadd latency ~7)
+    P: int16 = 8,   # Row parallelism factor (8 to hide fadd latency ~7)
     mode: str = "csyn"
 ):
     """
@@ -474,7 +473,8 @@ def schedule_self_attention_4row_parallel(
     the `self_attention` implementation. It applies the same partitioning,
     pipelining and dataflow pragmas but customizes `sdpa.self_attention`.
     """
-    s = allo.customize(sdpa.self_attention, instantiate=[A_T, L, D_h, P])
+    print(f"{A_T=}, {N_T=}, {D_h=}, {P=}, {mode=}")
+    s = allo.customize(sdpa.schedule_self_attention_4row_parallel, instantiate=[A_T, L, D_h, P])
     
     loops = s.get_loops()
     outer_loop = loops["row_outer"]    
