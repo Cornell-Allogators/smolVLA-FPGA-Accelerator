@@ -1,74 +1,27 @@
+"""Test functional equivalence between self_attention_2 and self_attention_3"""
 import allo
 import numpy as np
-from allo.ir.types import float32, bfloat16, int32, int16, int8, int4, int64, Index
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parents[2]))
-from matrix_multiplies import mm_transpose, mm1, mm_transpose_return, mm1_return
-from attention.cross_attention.softmax import softmax_baseline, softmax_return
-from attention.cross_attention.sdpa import sdpa_streaming_8row as sdpa
-from attention.cross_attention.sdpa_dataflow_scheduler import schedule_sdpa_streaming_4row_parallel as sdpa_schedule
-from allo.customize import Partition as partition
+from allo.ir.types import float32, int8, int16, int32
 
+# Use smaller dimensions for quick testing
+H_val = 12    # Number of heads
+L_val = 1024   # Sequence length (must be divisible by P)
+D_h_val = 64  # Head dimension
+P_val = 4    # Parallelism factor
 
-
-def self_attention[
-    T: (bfloat16, float32, int4, int8),
+def self_attention_2[
+    T: (float32, int8),
     L: int16,
+    H: int16,
     D_h: int16,
-    H: int16, #num heads in parallel
-    P: int16  # Parallelism factor (8 for 8-row streaming SDPA)
 ](
     X:   "T[H, L, D_h]",
     W_q: "T[H, D_h, D_h]",
     W_k: "T[H, D_h, D_h]",
     W_v: "T[H, D_h, D_h]",
-    W_o: "T[H, D_h, D_h]",
     scale: "float32",
     out: "T[H, L, D_h]"
 ):
-    """
-    Self-attention with integrated QKV projection.
-    Structure:
-    - QKV Projection: Compute Q=X@W_q, K=X@W_k, V=X@W_v
-    - Outer loop: L//P iterations (batch of P rows)
-    - Middle loop: P (row index within batch) 
-    - Inner loops: pipelined computation for each row
-    """
-    # ===== QKV Projection Stage =====
-    Q: "T[H, L, D_h]" = 0
-    K: "T[H, L, D_h]" = 0
-    V: "T[H, L, D_h]" = 0
-    
-    # # ===== QKV Projection (manual matmul-transpose) =====
-    for h1 in allo.grid(H, name="head_loop"):
-        for i in allo.grid(L, name="mm_loop"):
-            for j in allo.grid(D_h, name="mm_loop"):
-                for k in allo.reduction(D_h, name="prj_dot_product"):
-                    Q[h1, i, j] += X[h1, i, k] * W_q[h1, j, k] #standard transpose matmul - TODO: Verify if its supposed to transpose for VLM encoder
-                    K[h1, i, j] += X[h1, i, k] * W_k[h1, j, k]
-                    V[h1, i, j] += X[h1, i, k] * W_v[h1, j, k]
-                    
-            
-        sdpa[T, L, D_h, P, "sdpa"](Q[h1, :, :], K[h1, :, :], V[h1, :, :], scale, out[h1, :, :])
-
-
-def self_attention_2[
-    T: (bfloat16, float32, int4, int8),
-    L: int16, # Number of Tokens
-    H: int16, # Number of Heads
-    D_h: int16, # Head Embedding Length
-](
-    X:   "T[H, L, D_h]",
-    W_q: "T[H, D_h, D_h]",
-    W_k: "T[H, D_h, D_h]",
-    W_v: "T[H, D_h, D_h]",
-    scale: "float32", #takes the value of 8
-    out: "T[H, L, D_h]"
-):
-    # ===== QKV Projection Stage =====
-    
-    # # ===== QKV Projection (manual matmul-transpose) =====
     for h1 in allo.grid(H, name="head_loop"):
         Q: "T[L, D_h]" = 0
         K: "T[L, D_h]" = 0
@@ -89,9 +42,7 @@ def self_attention_2[
                 acc: "int32" = 0
                 for k_attn in allo.reduction(D_h, name="dot_product"):
                     acc += Q[i_out, k_attn] * K[j_attn, k_attn]
-                
                 attn_row[j_attn] = acc
-                
                 if acc > max_val:
                     max_val = acc
                     
@@ -117,7 +68,6 @@ def self_attention_2[
             acc_out: "int32[D_h]" = 0
             for j_out in allo.grid(L, name="out_row_loop"):
                 softmax_val: "int32" = softmax_scaled[j_out]
-                
                 for k_out in allo.reduction(D_h, name="out_loop"):   
                     v_val: "int32" = V[j_out, k_out]
                     acc_out[k_out] += softmax_val * v_val
@@ -127,46 +77,45 @@ def self_attention_2[
 
 
 def self_attention_3[
-    T: (bfloat16, float32, int4, int8),
-    L: int16, # Number of Tokens
-    H: int16, # Number of Heads
-    D_h: int16, # Head Embedding Length
-    P: int16, # Parallelism factor - number of rows to process together
+    T: (float32, int8),
+    L: int16,
+    H: int16,
+    D_h: int16,
+    P: int16,
 ](
     X:   "T[H, L, D_h]",
     W_q: "T[H, D_h, D_h]",
     W_k: "T[H, D_h, D_h]",
     W_v: "T[H, D_h, D_h]",
-    scale: "float32", #takes the value of 8
+    scale: "float32",
     out: "T[H, L, D_h]"
 ):
-    # ===== QKV Projection Stage =====
-    
-    # # ===== QKV Projection (manual matmul-transpose) =====
     for h1 in allo.grid(H, name="head_loop"):
-        Q: "T[L, D_h]"
-        K: "T[L, D_h]"
-        V: "T[L, D_h]" 
+        Q: "T[L, D_h]" = 0
+        K: "T[L, D_h]" = 0
+        V: "T[L, D_h]" = 0
 
-        for i_precalc in allo.grid(L, name="mm_i_loop"):
-            for j_precalc in allo.grid(D_h, name="mm_j_loop"):
-                for k_precalc in allo.reduction(D_h, name="prj_dot_product"):
-                    Q[i_precalc, j_precalc] += X[h1, i_precalc, k_precalc] * W_q[h1, j_precalc, k_precalc]
-                    K[i_precalc, j_precalc] += X[h1, i_precalc, k_precalc] * W_k[h1, j_precalc, k_precalc]
-                    V[i_precalc, j_precalc] += X[h1, i_precalc, k_precalc] * W_v[h1, j_precalc, k_precalc]
+        # FIXED: Write to correct Q/K/V indices
+        for i_precalc in allo.grid(L//P, name="mm_i_loop"):
+            for p_precalc in allo.grid(P, name="p_precalc_loop"):
+                for j_precalc in allo.grid(D_h, name="mm_j_loop"):
+                    for k_precalc in allo.reduction(D_h, name="prj_dot_product"):
+                        row_idx: int16 = i_precalc * P + p_precalc
+                        Q[row_idx, j_precalc] += X[h1, row_idx, k_precalc] * W_q[h1, j_precalc, k_precalc]
+                        K[row_idx, j_precalc] += X[h1, row_idx, k_precalc] * W_k[h1, j_precalc, k_precalc]
+                        V[row_idx, j_precalc] += X[h1, row_idx, k_precalc] * W_v[h1, j_precalc, k_precalc]
 
         for i_out in allo.grid(L//P, name="row_loop"):
             attn_row: "int32[P, L]"
             max_val: "int32[P]" = -2147483648
-            loop_base: int32 = i_out * P
+            
             for j_attn in allo.grid(L, name="attn_loop"):
                 for p_attn in allo.grid(P, name="p_attn_loop"):
                     acc: "int32" = 0
+                    row_idx: int16 = i_out * P + p_attn
                     for k_attn in allo.reduction(D_h, name="dot_product"):
-                        acc += Q[loop_base + p_attn, k_attn] * K[j_attn, k_attn]
-                    
+                        acc += Q[row_idx, k_attn] * K[j_attn, k_attn]
                     attn_row[p_attn, j_attn] = acc
-                    
                     if acc > max_val[p_attn]:
                         max_val[p_attn] = acc
                     
@@ -196,19 +145,60 @@ def self_attention_3[
             for j_out in allo.grid(L, name="out_row_loop"):
                 for p_out in allo.grid(P, name="p_out_loop"):
                     softmax_val: "int32" = softmax_scaled[p_out, j_out]
-                    
                     for k_out in allo.reduction(D_h, name="out_loop"):   
                         v_val: "int32" = V[j_out, k_out]
                         acc_out[p_out, k_out] += softmax_val * v_val
 
             for k_final in allo.grid(D_h, name="final_loop"):
                 for p_final in allo.grid(P, name="p_final_loop"):
-                    out[h1, i_out*P + p_final, k_final] = acc_out[p_final, k_final] >> 15
+                    # FIXED: Use i_out * P + p_final instead of i_out + p_final
+                    out[h1, i_out * P + p_final, k_final] = acc_out[p_final, k_final] >> 15
 
-H: int16 = 12
-P: int16 = 8
-L: int16 = 1024
-D_h: int16 = 64
+
 if __name__ == "__main__":
-    pass
+    # Set random seed for reproducibility
+    np.random.seed(42)
     
+    # Create test inputs
+    X = np.random.randint(-10, 10, size=(H_val, L_val, D_h_val)).astype(np.int8)
+    W_q = np.random.randint(-5, 5, size=(H_val, D_h_val, D_h_val)).astype(np.int8)
+    W_k = np.random.randint(-5, 5, size=(H_val, D_h_val, D_h_val)).astype(np.int8)
+    W_v = np.random.randint(-5, 5, size=(H_val, D_h_val, D_h_val)).astype(np.int8)
+    scale: float32 = 8.0  # Must be plain Python float, not numpy type
+    
+    out_2 = np.zeros((H_val, L_val, D_h_val), dtype=np.int8)
+    out_3 = np.zeros((H_val, L_val, D_h_val), dtype=np.int8)
+    
+    print("Building self_attention_2...")
+    s2 = allo.customize(self_attention_2, instantiate=[int8, L_val, H_val, D_h_val])
+    mod2 = s2.build(target="llvm")
+    
+    print("Building self_attention_3...")
+    s3 = allo.customize(self_attention_3, instantiate=[int8, L_val, H_val, D_h_val, P_val])
+    mod3 = s3.build(target="llvm")
+    
+    print("Running self_attention_2...")
+    mod2(X, W_q, W_k, W_v, scale, out_2)
+    
+    print("Running self_attention_3...")
+    mod3(X, W_q, W_k, W_v, scale, out_3)
+    
+    print("\n===== Results =====")
+    print(f"out_2 shape: {out_2.shape}")
+    print(f"out_3 shape: {out_3.shape}")
+    
+    # Check if outputs match
+    if np.array_equal(out_2, out_3):
+        print("\n✅ SUCCESS: self_attention_2 and self_attention_3 are FUNCTIONALLY EQUIVALENT!")
+    else:
+        print("\n❌ FAILURE: Outputs differ!")
+        diff = np.abs(out_2.astype(np.int32) - out_3.astype(np.int32))
+        print(f"Max absolute difference: {np.max(diff)}")
+        print(f"Number of differing elements: {np.sum(out_2 != out_3)} / {out_2.size}")
+        
+        # Show first few differences
+        diff_indices = np.argwhere(out_2 != out_3)
+        print("\nFirst 5 differences:")
+        for idx in diff_indices[:5]:
+            h, l, d = idx
+            print(f"  [{h},{l},{d}]: out_2={out_2[h,l,d]}, out_3={out_3[h,l,d]}")
