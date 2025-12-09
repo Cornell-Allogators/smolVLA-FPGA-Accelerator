@@ -1,6 +1,6 @@
 import allo
 import numpy as np
-from allo.ir.types import float32, bfloat16, int32, int16, int8, int4, int64, Index
+from allo.ir.types import float32, bfloat16, int32, int16, int8, int4, int64, Index, bool
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[2]))
@@ -135,28 +135,31 @@ def self_attention_3[
     P: int16, # Parallelism factor - number of rows to process together
     P_s: int16, # Summation parallelism factor
 ](
-    X:   "T[H, L, D]",
+    X:   "T[L, D]",
     W_q: "T[H, D_h, D]",
     W_k: "T[H, D_h, D]",
     W_v: "T[H, D_h, D]",
     W_o: "T[H, D_h, D]",
     scale: "float32", #takes the value of 8
-    out: "T[H, L, D_h]"
+    out: "T[L, D]"
 ):
     # ===== QKV Projection Stage =====
     
     # # ===== QKV Projection (manual matmul-transpose) =====
     for h1 in allo.grid(H, name="head_loop"):
-        Q: "T[L, D_h]" = 0
-        K: "T[L, D_h]" = 0
-        V: "T[L, D_h]" = 0
+        Q: "int32[L, D_h]"
+        K: "int32[L, D_h]"
+        V: "int32[L, D_h]" 
 
-        for i_precalc in allo.grid(L, name="mm_i_loop"):
+        for i_precalc in allo.grid(L//P, name="mm_i_loop"):
             for k_precalc in allo.reduction(D, name="prj_dot_product"):
                 for j_precalc in allo.grid(D_h, name="mm_j_loop"):
-                    Q[i_precalc, j_precalc] += X[h1, i_precalc, k_precalc] * W_q[h1, j_precalc, k_precalc]
-                    K[i_precalc, j_precalc] += X[h1, i_precalc, k_precalc] * W_k[h1, j_precalc, k_precalc]
-                    V[i_precalc, j_precalc] += X[h1, i_precalc, k_precalc] * W_v[h1, j_precalc, k_precalc]
+                    for p_inner in allo.grid(P, name="p_inner_loop"):
+                        i_precalc_actual: int32 = i_precalc * P + p_inner
+                        X_int32: "int16" = X[i_precalc, k_precalc]
+                        Q[i_precalc_actual, j_precalc] = (0 if k_precalc == 0 else Q[i_precalc_actual, j_precalc]) + X_int32 * W_q[h1, j_precalc, k_precalc]
+                        K[i_precalc_actual, j_precalc] = (0 if k_precalc == 0 else K[i_precalc_actual, j_precalc]) + X_int32 * W_k[h1, j_precalc, k_precalc]
+                        V[i_precalc_actual, j_precalc] = (0 if k_precalc == 0 else V[i_precalc_actual, j_precalc]) + X_int32 * W_v[h1, j_precalc, k_precalc]
 
         for i_out in allo.grid(L//P, name="row_loop"):
             attn_row: "int32[P, L]"
@@ -192,7 +195,7 @@ def self_attention_3[
                     sum_exps[p_sum] += sum_exps_p[p_sum, sum_i]
 
     
-            softmax_scaled: "float32[P, L]" = 0
+            softmax_scaled: "float32[P, L]"
             for j_norm in allo.grid(L, name="norm_loop"):
                 for p_norm in allo.grid(P, name="p_norm_loop"):
                     norm_val: "float32" = softmax_rows[p_norm, j_norm] / sum_exps[p_norm]
@@ -207,12 +210,12 @@ def self_attention_3[
                         v_val: "int32" = V[j_out, k_out]
                         acc_out[p_out, k_out] += softmax_val * v_val
 
-            for k_final in allo.grid(D_h, name="final_loop"):
-                for i_final in allo.grid(D_h, name="i_final_loop"):
+            for i_final in allo.grid(D, name="i_final_loop"):
+                for k_final in allo.grid(D_h, name="final_loop"):
                     weight: "T" = W_o[h1, k_final, i_final]
                     for p_final in allo.grid(P, name="p_final_loop"):
                         val: "int32" = acc_out[p_final, k_final]
-                        out[h1, i_out*P + p_final, i_final] = (val >> 15) * weight
+                        out[i_out*P + p_final, i_final] = (val >> 15) * weight
                         
 
 

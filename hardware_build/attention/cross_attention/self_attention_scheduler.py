@@ -72,7 +72,7 @@ def schedule_self_attention_row_parallelism(
     # s.split(outer_loop["j_precalc"], factor=p_2)
     loops = s.get_loops()
     outer_loop = loops["head_loop"]
-    s.pipeline(outer_loop["j_precalc"])
+    s.pipeline(outer_loop["k_precalc"])
     loops = s.get_loops()
     outer_loop = loops["head_loop"]
     print(outer_loop)    
@@ -93,7 +93,7 @@ def schedule_self_attention_row_parallelism(
     s.pipeline(outer_loop["j_exp_P_s"])
     s.pipeline(outer_loop["j_norm"])
     s.pipeline(outer_loop["j_out"])
-    s.pipeline(outer_loop["k_final"])
+    s.pipeline(outer_loop["i_final"])
     dtype_str = {
         int4: "int4",
         int8: "int8",
