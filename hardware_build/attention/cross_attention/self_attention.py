@@ -130,13 +130,16 @@ def self_attention_3[
     T: (bfloat16, float32, int4, int8),
     L: int16, # Number of Tokens
     H: int16, # Number of Heads
+    D: int16, # Embedding Length
     D_h: int16, # Head Embedding Length
     P: int16, # Parallelism factor - number of rows to process together
+    P_s: int16, # Summation parallelism factor
 ](
-    X:   "T[H, L, D_h]",
-    W_q: "T[H, D_h, D_h]",
-    W_k: "T[H, D_h, D_h]",
-    W_v: "T[H, D_h, D_h]",
+    X:   "T[H, L, D]",
+    W_q: "T[H, D_h, D]",
+    W_k: "T[H, D_h, D]",
+    W_v: "T[H, D_h, D]",
+    W_o: "T[H, D_h, D]",
     scale: "float32", #takes the value of 8
     out: "T[H, L, D_h]"
 ):
@@ -144,13 +147,13 @@ def self_attention_3[
     
     # # ===== QKV Projection (manual matmul-transpose) =====
     for h1 in allo.grid(H, name="head_loop"):
-        Q: "T[L, D_h]"
-        K: "T[L, D_h]"
-        V: "T[L, D_h]" 
+        Q: "T[L, D_h]" = 0
+        K: "T[L, D_h]" = 0
+        V: "T[L, D_h]" = 0
 
         for i_precalc in allo.grid(L, name="mm_i_loop"):
-            for j_precalc in allo.grid(D_h, name="mm_j_loop"):
-                for k_precalc in allo.reduction(D_h, name="prj_dot_product"):
+            for k_precalc in allo.reduction(D, name="prj_dot_product"):
+                for j_precalc in allo.grid(D_h, name="mm_j_loop"):
                     Q[i_precalc, j_precalc] += X[h1, i_precalc, k_precalc] * W_q[h1, j_precalc, k_precalc]
                     K[i_precalc, j_precalc] += X[h1, i_precalc, k_precalc] * W_k[h1, j_precalc, k_precalc]
                     V[i_precalc, j_precalc] += X[h1, i_precalc, k_precalc] * W_v[h1, j_precalc, k_precalc]
@@ -170,26 +173,29 @@ def self_attention_3[
                     if acc > max_val[p_attn]:
                         max_val[p_attn] = acc
                     
-            softmax_rows: "float32[P, L]"
-            sum_exps: "float32[P]" = 0.0
+            sum_exps_p: "float32[P, P_s]" = 0.0
+            softmax_rows: "float32[P, L]" 
             
-            for j_exp in allo.grid(L, name="exp_loop"):
-                for p_exp in allo.grid(P, name="p_exp_loop"):
-                    exp_pow: "float32" = attn_row[p_exp, j_exp] - max_val[p_exp]
-                    exp_val: "float32" = allo.exp(exp_pow / scale)
-                    softmax_rows[p_exp, j_exp] = exp_val
-        
-            softmax_rows_2: "float32[P, L]"
-            for j_exp_sum in allo.grid(L, name="sum_loop"):
-                for p_sum in allo.grid(P, name="p_sum_loop"):
-                    softmax_row = softmax_rows[p_sum, j_exp_sum]
-                    softmax_rows_2[p_sum, j_exp_sum] = softmax_row
-                    sum_exps[p_sum] += softmax_row
-                    
-            softmax_scaled: "float32[P, L]"
+            for j_exp_P_s in allo.grid(L // P_s, name="exp_loop"):
+                for j_exp_sum in allo.grid(P_s, name="exp_loop_2"):
+                    j_exp = j_exp_P_s * P_s + j_exp_sum
+                    for p_exp in allo.grid(P, name="p_exp_loop"):
+                        exp_pow: "float32" = attn_row[p_exp, j_exp] - max_val[p_exp]
+                        exp_val: "float32" = allo.exp(exp_pow / scale)
+                        softmax_rows[p_exp, j_exp] = exp_val
+                        sum_exps_p[p_exp, j_exp_sum] += exp_val
+
+            sum_exps: "float32[P]" = 0.0
+
+            for p_sum in allo.grid(P, name="p_sum_loop"):
+                for sum_i in allo.grid(P_s, name="sum_loop"):
+                    sum_exps[p_sum] += sum_exps_p[p_sum, sum_i]
+
+    
+            softmax_scaled: "float32[P, L]" = 0
             for j_norm in allo.grid(L, name="norm_loop"):
                 for p_norm in allo.grid(P, name="p_norm_loop"):
-                    norm_val: "float32" = softmax_rows_2[p_norm, j_norm] / sum_exps[p_norm]
+                    norm_val: "float32" = softmax_rows[p_norm, j_norm] / sum_exps[p_norm]
                     softmax_scaled[p_norm, j_norm] = norm_val * 32768.0
             
             acc_out: "int32[P, D_h]" = 0
@@ -202,9 +208,47 @@ def self_attention_3[
                         acc_out[p_out, k_out] += softmax_val * v_val
 
             for k_final in allo.grid(D_h, name="final_loop"):
-                for p_final in allo.grid(P, name="p_final_loop"):
-                    out[h1, i_out*P + p_final, k_final] = acc_out[p_final, k_final] >> 15
+                for i_final in allo.grid(D_h, name="i_final_loop"):
+                    weight: "T" = W_o[h1, k_final, i_final]
+                    for p_final in allo.grid(P, name="p_final_loop"):
+                        val: "int32" = acc_out[p_final, k_final]
+                        out[h1, i_out*P + p_final, i_final] = (val >> 15) * weight
+                        
 
+
+
+def layer_norm[
+    T: (int4, int8),
+    L: int16,
+    D: int16
+](
+    x: "T[D]",
+    gamma: "T[D]",
+    beta: "T[D]",
+    x_out: "T[D]"
+):
+    total: "int32" = 0
+    total_sq: "int32" = 0
+    
+    for j_sum in allo.reduction(D, name="ln_inner"):
+        val: "int32" = x[i_sum, j_sum]
+        total[i_sum] += val
+        total_sq[i_sum] += val * val
+            
+    mean: "float32" = total[i_stat] / D
+    variance: "float32" = (total_sq[i_stat] / D) - (mean_i * mean_i)
+    inv_std = allo.rsqrt(variance + 1e-8)
+        
+    for i_out in allo.grid(L, name="ln_out_outer"):
+        mean_i: "float32" = mean[i_out]
+        inv_std_i: "float32" = inv_std[i_out]
+        
+        for j_out in allo.grid(D, name="ln_out_inner"):
+            norm_val: "float32" = (x[i_out, j_out] - mean_i) * inv_std_i
+            scaled: "float32" = norm_val * gamma[j_out]
+            shifted: "float32" = scaled + beta[j_out]
+            x_out[i_out, j_out] = shifted
+    
 H: int16 = 12
 P: int16 = 8
 L: int16 = 1024

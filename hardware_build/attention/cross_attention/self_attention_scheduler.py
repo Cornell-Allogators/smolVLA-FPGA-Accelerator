@@ -62,13 +62,17 @@ def schedule_self_attention_row_parallelism(
     A_T: allo.ir.types,
     mode: str = "csyn"
 ):
-    U = 2
-    P = 8*U
-    s = allo.customize(sa_2, instantiate=[A_T, L, H, D_h, P])
+    P = 4
+    P_s = 4
+    p_2 = 2
+
+    s = allo.customize(sa_2, instantiate=[A_T, L, H, H*D_h, D_h, P, P_s])
+    loops = s.get_loops()
+    outer_loop = loops["head_loop"]
+    # s.split(outer_loop["j_precalc"], factor=p_2)
     loops = s.get_loops()
     outer_loop = loops["head_loop"]
     s.pipeline(outer_loop["j_precalc"])
-    # s.split(outer_loop["i_out"], factor=2)
     loops = s.get_loops()
     outer_loop = loops["head_loop"]
     print(outer_loop)    
@@ -80,12 +84,13 @@ def schedule_self_attention_row_parallelism(
     # Pipeline j1 (inner loop over L columns)
     loops = s.get_loops()
     outer_loop = loops["head_loop"]
+    print(outer_loop)
     s.partition(s.W_q, partition.Cyclic, dim=3, factor=4)
     s.partition(s.V, partition.Cyclic, dim=3, factor=4)
+    # s.partition(s.sum_exps_p, partition.Complete, dim=0)
 
     s.pipeline(outer_loop["j_attn"])  # Pipeline inner tiled loop
-    s.pipeline(outer_loop["j_exp"])
-    s.pipeline(outer_loop["j_exp_sum"])
+    s.pipeline(outer_loop["j_exp_P_s"])
     s.pipeline(outer_loop["j_norm"])
     s.pipeline(outer_loop["j_out"])
     s.pipeline(outer_loop["k_final"])
@@ -95,7 +100,8 @@ def schedule_self_attention_row_parallelism(
         float32: "float32",
         bfloat16: "bfloat16"
     }[A_T]
-    project_name = f"self_attention_rp_{U}_{dtype_str}_{mode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.prj"
+    project_name = f"self_attention_rp_{P}_{dtype_str}_{mode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.prj"
+
     s.build(target="vitis_hls", mode="csyn", project=project_name)()
 
 if __name__ == "__main__":
