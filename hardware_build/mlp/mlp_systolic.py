@@ -18,7 +18,7 @@ M, N, K = 1024, 768, 3072
 # Rt, Ct = 16, 16
 # Rt, Ct = 8, 8
 # Rt, Ct = 4, 4
-Rt, Ct = 16, 32
+Rt, Ct = 2, 4
 P0, P1 = Rt + 2, Ct + 2
 
 # Toggle flags
@@ -247,7 +247,7 @@ def test_large_scale_gemm():
             top,
             target="vitis_hls",
             mode="csyn",
-            project=f"multicache-M{M}N{N}K{K}-R{Rt}xC{Ct}.prj",
+            project=f"mlp_systolic_M{M}N{N}K{K}_Systolic_{Rt}x{Ct}.prj",
             wrap_io=False,
         )
         modc()
