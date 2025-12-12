@@ -1,0 +1,7 @@
+[package]
+name = "final-project-6775"
+version = "0.1.0"
+entrypoint = "main.typ"
+categories = [ ]
+disciplines = [ ]
+description = "Repo for Final Project"
