@@ -4,7 +4,7 @@
 
 = Analytical Modeling Framework
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *Framework Overview*:
   - Define the scope of analytical modeling (Roofline, resource bounds).
   - Referenced `roofline_analysis/roofline_critique.md` for methodology.
@@ -14,7 +14,7 @@
 
 == Computational Demands
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *Compute Analysis*:
   - List FLOPs counts for each major kernel (Attention, MLP).
   - Reference `hardware_build/attention/config.py` for dimensions.
@@ -43,7 +43,7 @@
 == Resource Constraints
 === Compute Resource Constraints
 
-#todo(Stanley, done: false)[
+#todo(Stanley, done: 10%)[
   *DSP/Logic Constraints*:
   - Discuss U280 DSP limits vs. required DSPs for matrix mults.
   - Explain how data types (int8 vs fp32) affect this.
@@ -53,7 +53,7 @@ Fundamentally, most of the operations in SmolVLA can be broken down to matrix op
 
 === Memory Capacity Constraints
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *On-chip Memory*:
   - Analyze HBM vs BRAM/URAM usage.
   - Discuss buffering strategies for weights/activations.
@@ -61,7 +61,7 @@ Fundamentally, most of the operations in SmolVLA can be broken down to matrix op
 
 === Memory Port Constraints
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *Port/Bank Conflicts*:
   - Explain HLS partitioning constraints.
   - Mention array partitioning directives used in Allo.
@@ -69,7 +69,7 @@ Fundamentally, most of the operations in SmolVLA can be broken down to matrix op
 
 === Memory Bandwidth Constraints
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *Bandwidth Bounds*:
   - Calculate peak theoretical bandwidth (HBM on U280).
   - Compare with required bandwidth for kernels.
@@ -81,7 +81,7 @@ Fundamentally, most of the operations in SmolVLA can be broken down to matrix op
 
 == Performance Estimation
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *Roofline Model*:
   - Construct the roofline chart.
   - Place kernels on the roofline based on OI.
@@ -89,7 +89,7 @@ Fundamentally, most of the operations in SmolVLA can be broken down to matrix op
 
 === Latency Estimation
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *Latency Breakdown*:
   - Estimate latency per layer.
   - Identify the bottleneck layer (Communication vs Computation).
@@ -97,7 +97,7 @@ Fundamentally, most of the operations in SmolVLA can be broken down to matrix op
 
 === Work Balancing
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *Load Balancing*:
   - Discuss pipelining efficiency.
   - Analyze if any stage is a significant bottleneck.
