@@ -6,7 +6,7 @@
 
 #todo(Ezra, done: false)[
   *Synthesis of Results*:
-  - Discuss specific bottlenecks encountered (e.g., Cross-Attention Softmax).
+  - Discuss specific bottlenecks encountered (e.g., Self-Attention Softmax).
   - Comment on the efficacy of HLS high-level synthesis vs RTL for this workload.
 ]
 

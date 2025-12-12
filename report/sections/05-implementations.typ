@@ -21,7 +21,7 @@
 
 #todo(Ezra, done: false)[
   *Attention Implementation*:
-  - Detail `hardware_build/attention/cross_attention`.
+  - Detail `hardware_build/attention/self_attention`.
   - Explain the Q, K, V matrix multiplication chain.
   - Discuss the specific bottleneck in Softmax and how it's handled on FPGA.
 ]

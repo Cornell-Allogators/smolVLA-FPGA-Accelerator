@@ -10,7 +10,7 @@
 
 #todo(Ezra, done: false)[
   *Attention Metrics*:
-  - Report exact latency (cycles/ms) for the Cross-Attention kernel.
+  - Report exact latency (cycles/ms) for the Self-Attention kernel.
   - Report resource usage (DSP, BRAM, LUT, FF) from Vivado reports.
   - Compare against the analytical model predictions.
 ]

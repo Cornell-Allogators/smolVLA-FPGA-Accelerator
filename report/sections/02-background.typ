@@ -27,7 +27,7 @@ The VLM processes the visual observations (from up to 3 cameras) and the user's 
   - Discuss how it interacts with the VLM/LLM components.
 ]
 
-The Action Expert is the primary focus of this acceleration effort. It operates on a sequence of standard Transformer blocks but is optimized for the action generation domain. According to our configuration, the Action Expert operates with the following parameters:
+The Action Expert operates on a sequence of standard Transformer blocks but is optimized for the action generation domain. According to our configuration, the Action Expert operates with the following parameters:
 - *Hidden Size*: 720
 - *Heads*: 12 Query heads, 4 Key/Value heads (grouped-query attention)
 - *Head Dimension*: 80
@@ -45,7 +45,7 @@ The core workload consists of Cross-Attention layers, where the query tokens (re
   - Discuss tokenization and embedding generation.
 ]
 
-The VLM component of SmolVLA handles the semantic understanding of the scene. It tokenizes the input text and visual patches (64 tokens per frame) into a unified embedding space. While the VLM is critical for the overall pipeline, it is executed less frequently (planning horizon) compared to the Action Expert (control frequency), making the Action Expert the bottleneck for real-time reactivity.
+The VLM component of SmolVLA handles the semantic understanding of the scene. It tokenizes the input text and visual patches (64 tokens per frame) into a unified embedding space. The Vision Encoder is a critical part of this pipeline, as it must process high-resolution images with low latency.
 
 
 === Vision Transformer Model
@@ -56,7 +56,7 @@ The VLM component of SmolVLA handles the semantic understanding of the scene. It
   - Mention specific parameters from `hardware_build/attention/config.py` (e.g., hidden size, number of heads).
 ]
 
-The visual front-end typically employs a Vision Transformer (ViT) to extract features from the camera inputs. These features are projected into the same embedding dimension as the text tokens, allowing the VLM to perform cross-modal reasoning.
+The Vision Encoder is the primary focus of this acceleration effort. The visual front-end typically employs a Vision Transformer (ViT) to extract features from the camera inputs. These features are projected into the same embedding dimension as the text tokens, allowing the VLM to perform cross-modal reasoning.
 
 /**********************************************************/
 
@@ -96,4 +96,4 @@ Spatial architectures, such as Systolic Arrays, are a natural fit for the dense 
   - Explain instruction-based execution.
 ]
 
-Temporal architectures rely on SIMD (Single Instruction, Multiple Data) execution units where the same operation is broadcast to multiple data points. While flexible, they often require complex control logic to manage instruction scheduling. For our fixed-function Action Expert accelerator, we prioritize spatial dataflow to leverage the massive parallelism of the FPGA fabric.
+Temporal architectures rely on SIMD (Single Instruction, Multiple Data) execution units where the same operation is broadcast to multiple data points. While flexible, they often require complex control logic to manage instruction scheduling. For our fixed-function Vision Encoder accelerator, we prioritize spatial dataflow to leverage the massive parallelism of the FPGA fabric.
