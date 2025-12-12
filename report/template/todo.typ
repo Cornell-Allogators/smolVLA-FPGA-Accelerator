@@ -1,6 +1,6 @@
 #import "@preview/drafting:0.2.0": *
 
-#let hide_todo = false
+#let hide_todo = true
 
 #let todo(
   who,
