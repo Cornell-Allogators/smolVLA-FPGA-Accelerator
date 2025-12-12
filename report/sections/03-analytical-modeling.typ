@@ -23,7 +23,7 @@ The Vision Encoder is responsible for processing the raw camera inputs.
 - *Hidden Size ($D$)*: 768.
 - *MLP Expansion*: 4x (Intermediate Dim = 3072).
 - *Heads*: 12.
-- *Input Tokens*: 64 patches per image. With 3 cameras, this results in $64 times 3 = 192$ visual tokens interacting in the VLM.
+  - *Input Tokens*: 1024 patches per image. The Vision Encoder treats each $32 times 32$ patch (for a $512 times 512$ image) as a token.
 
 *2. VLM Backbone (Vision-Language Model)*
 The VLM fuses the visual embeddings with the text instructions.
@@ -75,7 +75,7 @@ $ "Total" approx 12 L D^2 $
   - Explain how data types (int8 vs fp32) affect this.
 ]
 
-Fundamentally, most of the operations in SmolVLA can be broken down to matrix operations.These operations can then further broken down into multiply and addition operations, commonly called multiply accumulated operations, also know as MACs. The naive approach is to implement all of these operations to the fabric of the FPGA or synthesizing all of the operations to LUTs and Flip Flops. However, this can be quite inefficient, as expressing floating point operations can requires thousands of LUTs and flip flops. One way to help solve 
+Fundamentally, most of the operations in SmolVLA can be broken down to matrix operations.These operations can then further broken down into multiply and addition operations, commonly called multiply accumulated operations, also know as MACs. The naive approach is to implement all of these operations to the fabric of the FPGA or synthesizing all of the operations to LUTs and Flip Flops. However, this can be quite inefficient, as expressing floating point operations can requires thousands of LUTs and flip flops. One way to help solve
 
 === Memory Capacity Constraints
 
