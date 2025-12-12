@@ -44,13 +44,22 @@ Since our FPGA implementation utilizes `int8` quantization to maximize throughpu
 
 The computational Demands are summarized by the expected MACs per token for a single Transformer layer. We distinguish between the Standard Multi-Head Attention (MHA) used in the Vision Encoder, and the Grouped Query Attention (GQA) used in the VLM Backbone and Action Expert.
 
-*Definitions*:
-- $L$: Sequence Length (Number of tokens)
-- $D$: Hidden Dimension
-- $D_h$: Head Dimension ($D / "Heads"$)
-- $H_q$: Number of Query Heads
-- $H_("kv")$: Number of Key/Value Heads
-- $E$: MLP Expansion Factor (typically 4)
+#figure(
+  caption: [Definitions for the dimensions used in our analysis],
+  styled-table(
+    columns: (auto, auto),
+    inset: 10pt,
+    align: horizon,
+    table.header([*Symbol*], [*Definition*]),
+    [$L$], [Sequence Length \ (Number of tokens)],
+    [$D$], [Hidden Dimension],
+    [$D_h$], [Head Dimension ($D / "Heads"$)],
+    [$H_q$], [Number of Query Heads],
+    [$H_("kv")$], [Number of Key/Value Heads],
+    [$E$], [MLP Expansion\ Factor (typically 4)]
+  )
+)
+
 
 #figure(
   caption: [Expected MACs for Standard Transformer Layer (MHA)],

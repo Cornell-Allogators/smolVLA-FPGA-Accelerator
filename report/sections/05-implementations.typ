@@ -36,18 +36,19 @@
 
 == Accelerating MLP Layers
 
-#todo(Stanley, done: 0%)[
+#todo(Stanley, done: 99%)[
   *MLP Implementation*:
   FILL IN THE ERF FORMULA
 ]
 
-The MLP pipeline is implemented as follows. First, a fully connected(FFN) layer, which then feeds into a Gaussian Error Linear Unit (GELU), a non linear activation function. The GELU activiation function is chosen over other common activations largely because it is smooth/differentiable everywhere, which improves stability and helps preserve information given the small model size. Then, it is fed into another fully connected layer, before being passed into the layer norm. 
+The MLP pipeline is implemented as follows. First, a fully connected(FFN) layer, which then feeds into a Gaussian Error Linear Unit (GELU), a non linear activation function. The GELU activation function is chosen over other common activations largely because it is smooth/differentiable everywhere, which improves stability and helps preserve information given the small model size. Then, it is fed into another fully connected layer, before being passed into the layer norm. 
 
 #include "../figures/mlp-layers/mlp-layers.typ"
 
 We can compute the linear layer by multiplying the input tensors with the weight tensors, then performing an addition with the bias vectors. However, what makes this challenging is the large shapes of the tensors we are multiplying. Of the 9.6 Billion MACs used in the MLP, 99.6% are split across the two matrix multiplications, while the ~8B MACs used int the self attention are primarily distributed among 72 smaller matrix multiplications(12 heads x 6 multiplications per head).
 
 #include "../figures/mlp-layer-math/mlp-layers-math.typ"
+
 
 $ "GELU"(x) = x * ( 1/2 + 1/2 "erf"(sqrt(1/2)x)) $
 
@@ -64,5 +65,5 @@ For the matrix multiplications, the standard way to execute these are by unrolli
 
 #include "../figures/mlp-packed/mlp-packed.typ"
 
-We also experiment with packing our weights and tensors. Our weights and activations are int8, so we can pack up to four values per 32 bit beat. This helps transfers to and from BRAM, which normally transfer 32 bit words. Normally, worst case, if the weights were not consecutive in memory, it would require up to four memory reads. However, by packing, we guarantee that we can move 4 weights per cycle. In the future, this would also help with transfer across AXI
+We also experiment with packing our weights and tensors. Our weights and activations are int8, so we can pack up to four values per 32 bit beat. This helps transfers to and from BRAM, which normally transfer 32 bit words. Normally, worst case, if the weights were not consecutive in memory, it would require up to four memory reads. However, by packing, we guarantee that we can move 4 weights per cycle. In the future, this would also help with transfer from offchip HBM over AXI. AXI also would requires less data beats for each transaction, helping alleviate potential memory bandwidth issues. 
 

@@ -47,11 +47,14 @@
 
 == Evaluation of MLP Layers
 
-#todo(Stanley, done: 0%)[
+#todo(Stanley, done: 100%)[
   *MLP Metrics*:
   - Report latency and resource usage for MLP layers.
   - Discuss impact of batch size (if applicable) or sequence length.
 ]
+
+When evaluating the MLP, we estimate the performance of the latency based on the number of cycles it takes to execute one query. We also estimated the resource utilization by using the Vitis report. We count the LUT, FF, DSP, and BRAM utilization to determine how much of the FPGA is being consumed by the MLP.
+
 
 
 === Ablation
@@ -70,17 +73,25 @@ The main contributors to the latency for the MLP are the two fully connected lay
 #figure(
   caption: [Ablation of MLP Kernels],
   styled-table(
-    columns: 5,
-    table.header([Kernel], [Latency (ms)], [BRAM %], [LUT %], [DSP %]),
+    columns: 6,
+    table.header([Kernel FC1/FC2], [Activation], [Latency (ms)], [BRAM %], [LUT %], [DSP %]),
     [Baseline],
-    [71.13],
-    [115.05%],
-    [257.54%],
-    [3.49%],
-    [Optimized],
+    [GELU],
+    [8.055],
+    [210%],
+    [68 (0%)],
+    [19653 (1%)],
+    [Systolic 12x30, 40x30],
+    [G],
     [25.05],
-    [96.58%],
-    [3.31%],
-    [0.65%],
+    [3,894 (96.58%)],
+    [43,115 (3.31%)],
+    [59 (0.65%)],
+    [Tiled 12x30, 40x30],
+    [], 
+    [25.05],
+    [3,894 (96.58%)],
+    [43,115 (3.31%)],
+    [59 (0.65%)],
   ),
 ) <tab:mlp-ablation>
