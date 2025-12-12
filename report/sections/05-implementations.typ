@@ -49,6 +49,8 @@ We can compute the linear layer by multiplying the input tensors with the weight
 
 #include "../figures/mlp-layer-math/mlp-layers-math.typ"
 
+$ "GELU"(x) = x * ( 1/2 + 1/2 "erf"(sqrt(1/2)x)) $
+
 Another aspect we can optimize is the calculation of GELU. True GELU is typically calculated with this formula, which contains an ERF. This however, has to be calculated with an integral, something that can not be done easily on an FPGA. 
 
 

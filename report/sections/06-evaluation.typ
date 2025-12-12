@@ -61,11 +61,11 @@
   - Show progression of optimizations for MLP.
 ]
 
-Several architectural optimizations were explored for the MLP. Our baseline design did not utilize tiling, but was a cascaded systolic design in which multiple systolic arrays were instantiated and connected directly in sequence, with each dedicated to a specific layer of the MLP. This version has relatively low latency, but has very high resource utilization due to the lack of hardware reuse and tiling.
+Several architectural optimizations were explored for the MLP. Our baseline design did not utilize tiling, but was a cascaded systolic design in which multiple systolic arrays were instantiated and connected directly in sequence, with each dedicated to a specific layer of the MLP. This version has relatively low latency, but has very high resource utilization due to the lack of hardware reuse and tiling. Synthesis was run for varying dimensions of the systolic array s the dimensions of the systolic array increase, latency decreases due to higher parallelism the matrix multiplication. Additionally, BRAM utilization decreased as the systolic array sized increased. However, as these metrics decreased, LUT, FF and DSP utilization increased significantly. Ultimately, we were unable to find a feasible configuration for this implementation (utilization of all resources < 100%).
 
-Spatial parallelism was exploited in the fully connected layers via systolic array tiling
+To address this, we implemented tiling, exploiting temporal reuse and dataflow control. The MLP computation is partitioned into tiles, allowing the same hardware to be reused across multiple tiles over time. This dramatically reduced resource utilization
 
-The main contributors to the latency for the MLP are the two fully connected layers, FC1 and FC2, as they account for the majority of the MAC operations. Synthesis was run for varying dimensions of the systolic array --- as the dimensions of the systolic array increase, latency decreases due to higher parallelism the matrix multiplication. Additionally, BRAM utilization decreased as the systolic array sized increased due to the use of tiling.
+The main contributors to the latency for the MLP are the two fully connected layers, FC1 and FC2, as they account for the majority of the MAC operations. 
 
 #figure(
   caption: [Ablation of MLP Kernels],
