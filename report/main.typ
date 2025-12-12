@@ -46,8 +46,6 @@
     [
       *Stanley*\
       MLP Layer\
-      ),
-      ) <tab:macs-gqa>
       #link("mailto:ss3679@cornell.edu")
     ],
     [
