@@ -63,15 +63,15 @@
 
 Several architectural optimizations were explored for the MLP. Our baseline design did not utilize tiling, but was a cascaded systolic design in which multiple systolic arrays were instantiated and connected directly in sequence, with each dedicated to a specific layer of the MLP. This version has relatively low latency, but has very high resource utilization due to the lack of hardware reuse and tiling. Synthesis was run for varying dimensions of the systolic array s the dimensions of the systolic array increase, latency decreases due to higher parallelism the matrix multiplication. Additionally, BRAM utilization decreased as the systolic array sized increased. However, as these metrics decreased, LUT, FF and DSP utilization increased significantly. Ultimately, we were unable to find a feasible configuration for this implementation (utilization of all resources < 100%).
 
-To address this, we implemented tiling, exploiting temporal reuse and dataflow control. The MLP computation is partitioned into tiles, allowing the same hardware to be reused across multiple tiles over time. This dramatically reduced resource utilization
+To address this, we implemented tiling, exploiting temporal reuse and dataflow control. The MLP computation is partitioned into tiles, allowing the same hardware to be reused across multiple tiles over time. This dramatically reduced resource utilization and allowed for synthesis of a feasible design with significantly reduced latency.
 
-The main contributors to the latency for the MLP are the two fully connected layers, FC1 and FC2, as they account for the majority of the MAC operations. 
+The main contributors to the latency for the MLP are the two fully connected layers, FC1 and FC2, as they account for the majority of the MAC operations. It can be noted that latency will scale approximately linearly with batch size regardless of these optimizations, and that batch size does not have a direct impact on resource utilization.
 
 #figure(
   caption: [Ablation of MLP Kernels],
   styled-table(
     columns: 5,
-    table.header([Kernel], [Speed (ms)], [BRAM %], [LUT %], [DSP %]),
+    table.header([Kernel], [Latency (ms)], [BRAM %], [LUT %], [DSP %]),
     [Baseline],
     [71.13],
     [115.05%],

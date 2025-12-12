@@ -62,5 +62,7 @@ There are more simple approximation, such as a sigmoid approximation $ "GELU"(x)
 
 For the matrix multiplications, the standard way to execute these are by unrolling and pipelining the triple nested loop. We will also experiment with a systolic array based implementation. With this approach, data is injected into the edge processing elements, and then only moves between processing elements. This reduces the amount of data movement needed between the memory/buffers, helping increasing utilization of all of the DSPs on the FPGA.
 
+#include "../figures/mlp-packed/mlp-packed.typ"
 
+We also experiment with packing our weights and tensors. Our weights and activations are int8, so we can pack up to four values per 32 bit beat. This helps transfers to and from BRAM, which normally transfer 32 bit words. Normally, worst case, if the weights were not consecutive in memory, it would require up to four memory reads. However, by packing, we guarantee that we can move 4 weights per cycle. In the future, this would also help with transfer across AXI
 
