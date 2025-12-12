@@ -47,7 +47,7 @@
 
 == Evaluation of MLP Layers
 
-#todo(Ezra, done: 0%)[
+#todo(Stanley, done: 0%)[
   *MLP Metrics*:
   - Report latency and resource usage for MLP layers.
   - Discuss impact of batch size (if applicable) or sequence length.

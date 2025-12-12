@@ -45,7 +45,8 @@ The core workload consists of Cross-Attention layers, where the query tokens (re
   - Discuss tokenization and embedding generation.
 ]
 
-The VLM component of SmolVLA handles the semantic understanding of the scene. It tokenizes the input text and visual patches (64 tokens per frame) into a unified embedding space. The Vision Encoder is a critical part of this pipeline, as it must process high-resolution images with low latency.
+The VLM component of SmolVLA handles the semantic understanding of the scene. It tokenizes the input text and visual patches (64 tokens per frame) into a unified embedding space. The LLM component of the VLM contains the largest parameter count of the entire model.
+
 
 
 === Vision Transformer Model

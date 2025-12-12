@@ -36,7 +36,7 @@
 
 == Accelerating MLP Layers
 
-#todo(Ezra, done: 0%)[
+#todo(Stanley, done: 0%)[
   *MLP Implementation*:
   - Detail `hardware_build/mlp`.
   - Discuss the Feed-Forward Network structure (GeLU activation).

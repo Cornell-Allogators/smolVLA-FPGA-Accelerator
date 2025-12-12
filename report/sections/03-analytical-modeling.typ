@@ -75,7 +75,7 @@ $ "Total" approx 12 L D^2 $
   - Explain how data types (int8 vs fp32) affect this.
 ]
 
-Fundamentally, most of the operations in SmolVLA can be broken down to matrix operations.These operations can then further broken down into multiply and addition operations, commonly called multiply accumulated operations, also know as MACs. The naive approach is to implement all of these operations to the fabric of the FPGA or synthesizing all of the operations to LUTs and Flip Flops. However, this can be quite inefficient,
+Fundamentally, most of the operations in SmolVLA can be broken down to matrix operations.These operations can then further broken down into multiply and addition operations, commonly called multiply accumulated operations, also know as MACs. The naive approach is to implement all of these operations to the fabric of the FPGA or synthesizing all of the operations to LUTs and Flip Flops. However, this can be quite inefficient, as expressing floating point operations can requires thousands of LUTs and flip flops. One way to help solve 
 
 === Memory Capacity Constraints
 
@@ -107,7 +107,7 @@ Fundamentally, most of the operations in SmolVLA can be broken down to matrix op
 
 == Performance Estimation
 
-#todo(Ezra, done: 0%)[
+#todo(Sam, done: 0%)[
   *Roofline Model*:
   - Construct the roofline chart.
   - Place kernels on the roofline based on OI.
@@ -123,7 +123,7 @@ Fundamentally, most of the operations in SmolVLA can be broken down to matrix op
 
 === Work Balancing
 
-#todo(Ezra, done: 0%)[
+#todo(Sam, done: 0%)[
   *Load Balancing*:
   - Discuss pipelining efficiency.
   - Analyze if any stage is a significant bottleneck.
