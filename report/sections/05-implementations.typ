@@ -26,6 +26,12 @@
   - Discuss the specific bottleneck in Softmax and how it's handled on FPGA.
 ]
 
+
+#include "../figures/per-head-loop/per-head-loop.typ"
+
+
+#include "../figures/per-head-loop-with-ii/per-head-loop-with-ii.typ"
+
 /**********************************************************/
 
 == Accelerating MLP Layers

@@ -15,3 +15,6 @@
     2. Implementation of key kernels using Allo.
     3. Evaluation of performance/efficiency on U280.
 ]
+
+
+#include "../figures/model-overview/model-overview.typ"
