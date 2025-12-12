@@ -1,5 +1,7 @@
 # smolVLA-FPGA-Accelerator
 
+## Download Report Here: <a href="https://github.com/Cornell-Allogators/smolVLA-FPGA-Accelerator/releases/download/latest/main.pdf" target="_blank">Final Report.</a>
+
 ## Help
 
 If when running `pip install -r requirements.txt` you get an error that looks like:

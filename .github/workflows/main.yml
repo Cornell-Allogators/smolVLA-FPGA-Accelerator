@@ -1,0 +1,32 @@
+name: Build Typst document
+on: [push, workflow_dispatch]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Typst
+        uses: lvignoli/typst-action@main
+        with:
+          source_file: report/main.typ
+    
+      - name: Upload PDF file
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF
+          path: report/main.pdf
+
+      - name: Update Latest Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "Latest Report (${{ github.event.head_commit.timestamp }})"
+          tag_name: latest
+          files: report/main.pdf
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
