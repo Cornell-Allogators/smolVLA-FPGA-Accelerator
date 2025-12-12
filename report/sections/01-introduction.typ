@@ -24,3 +24,6 @@ We specifically target the "Action Expert" component of the SmolVLA architecture
 + A detailed analysis of the computational and memory demands of the SmolVLA Action Expert.
 + An implementation of the Cross-Attention and Multi-Layer Perceptron (MLP) layers using Allo's composable optimizations.
 + An evaluation of the accelerator's performance in terms of latency and resource utilization (DSP, BRAM) on the U280 platform.
+
+
+#include "../figures/model-overview/model-overview.typ"

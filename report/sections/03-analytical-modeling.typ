@@ -49,7 +49,7 @@
   - Explain how data types (int8 vs fp32) affect this.
 ]
 
-Fundamentally, most of the operations in SmolVLA can be broken down to matrix operations.
+Fundamentally, most of the operations in SmolVLA can be broken down to matrix operations.These operations can then further broken down into multiply and addition operations, commonly called multiply accumulated operations, also know as MACs. The naive approach is to implement all of these operations to the fabric of the FPGA or synthesizing all of the operations to LUTs and Flip Flops. However, this can be quite inefficient,
 
 === Memory Capacity Constraints
 
