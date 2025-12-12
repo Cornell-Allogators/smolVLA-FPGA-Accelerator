@@ -28,10 +28,10 @@ The VLM processes the visual observations (from up to 3 cameras) and the user's 
 ]
 
 The Action Expert operates on a sequence of standard Transformer blocks but is optimized for the action generation domain. According to our configuration, the Action Expert operates with the following parameters:
-- *Hidden Size*: 720
-- *Heads*: 12 Query heads, 4 Key/Value heads (grouped-query attention)
-- *Head Dimension*: 80
-- *Expert Width Multiplier*: 0.75x relative to a standard VLM width.
+  - *Hidden Size*: 720
+  - *Heads*: 12 Query heads, 4 Key/Value heads (grouped-query attention)
+  - *Head Dimension*: 80
+  - *Expert Width Multiplier*: 0.75x relative to a standard VLM width.
 
 The core workload consists of Cross-Attention layers, where the query tokens (representing the robot's action plan) attend to the context provided by the VLM embeddings, followed by MLP layers for feed-forward processing. The model uses a flow-matching solver with 10 steps to refine the action trajectory.
 
@@ -46,7 +46,6 @@ The core workload consists of Cross-Attention layers, where the query tokens (re
 ]
 
 The VLM component of SmolVLA handles the semantic understanding of the scene. It tokenizes the input text and visual patches (64 tokens per frame) into a unified embedding space. The LLM component of the VLM contains the largest parameter count of the entire model.
-
 
 
 === Vision Transformer Model
@@ -88,7 +87,7 @@ Key features of Allo used in this project include:
   - Explain systolic arrays and dataflow architectures.
 ]
 
-Spatial architectures, such as Systolic Arrays, are a natural fit for the dense matrix multiplications (GEMMs) found in Transformer attention and MLP layers. In a systolic array, data flows rhythmically through a grid of Processing Elements (PEs), maximizing data reuse and minimizing off-chip memory access-often the primary bottleneck in FPGA accelerators.
+Spatial architectures, such as Systolic Arrays, are a natural fit for the dense matrix multiplications (GEMMs) found in Transformer attention and MLP layers. When working with memory bound kernels it is extremely important to utilize FIFO streaming between PEs to avoid off-chip HBM access. We utilized a spatial dataflow architecture
 
 === Temporal Architectures
 

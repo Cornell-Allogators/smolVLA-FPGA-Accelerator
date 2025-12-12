@@ -2,20 +2,27 @@
 
 // --- 1. Global Page Settings ---
 #set text(
-  font: "New Computer Modern", // Standard academic font
-  size: 10pt, // REQUIREMENT: 10 point font
+  font: "New Computer Modern",
+  size: 10pt,
 )
 
 #set page(
   paper: "us-letter",
   margin: 1in,
-  columns: 1, // REQUIREMENT: Single-column
+  columns: 1,
 )
 
 #set par(
   justify: true,
-  leading: 0.65em, // REQUIREMENT: Single-space
+  leading: 0.6em,
 )
+
+#set heading(numbering: "1.1.")
+#set figure(supplement: "Fig.")
+
+#show figure.caption: it => box(width: 90%, context [
+  #it.supplement #it.counter.display()#it.separator#it.body
+])
 
 // --- 2. Title and Author Header ---
 #align(center)[
