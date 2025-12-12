@@ -3,25 +3,25 @@
 // --- 1. Global Page Settings ---
 #set text(
   font: "New Computer Modern", // Standard academic font
-  size: 10pt                   // REQUIREMENT: 10 point font
+  size: 10pt, // REQUIREMENT: 10 point font
 )
 
 #set page(
   paper: "us-letter",
   margin: 1in,
-  columns: 1                   // REQUIREMENT: Single-column
+  columns: 1, // REQUIREMENT: Single-column
 )
 
 #set par(
-  justify: true, 
-  leading: 0.65em              // REQUIREMENT: Single-space
+  justify: true,
+  leading: 0.65em, // REQUIREMENT: Single-space
 )
 
 // --- 2. Title and Author Header ---
 #align(center)[
   #text(1.5em, weight: "bold")[Accelerating SmolVLA on an FPGA Using Allo]
   #v(1em)
-  
+
   // Author Grid
   #grid(
     columns: (1fr, 1fr, 1fr, 1fr),
@@ -39,13 +39,15 @@
     [
       *Stanley*\
       MLP Layer\
+      ),
+      ) <tab:macs-gqa>
       #link("mailto:ss3679@cornell.edu")
     ],
     [
       *Isabella*\
       MLP Layer\
       #link("mailto:isf9@cornell.edu")
-    ]
+    ],
   )
 ]
 
