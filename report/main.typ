@@ -1,4 +1,4 @@
- #import "template/template.typ": *
+#import "template/template.typ": *
 
 // --- 1. Global Page Settings ---
 #set text(

@@ -120,6 +120,16 @@ The computational Demands are summarized by the expected MACs per token for a si
   ),
 ) <tab:macs-gqa>
 
+*Methodology and Assumptions*:
+The following parameters and assumptions are used for the MACs calculation:
+- *Vision Encoder*: Input sequence length $L=1024$ (patches). Calculations are per-image.
+- *VLM Backbone*: Input sequence length $L=113$. This reflects a single-camera mode (64 visual tokens + 48 text tokens + 1 state token).
+- *Action Expert*:
+  - Sequence length $L=50$ (predicted action horizon).
+  - Diffusion steps: 10.
+  - *KV Reuse*: The Cross-Attention Key/Value projections for the VLM context are computed *once* per inference (Static), while Query projections and Attention scores are recomputed at each diffusion step.
+  - *Architecture*: Grouped Query Attention ($H_q=12, H_("kv")=4$) with head dimension $D_h=60$.
+
 *Computational Demand Summary*
 
 Based on the parameters derived from the codebase and the specific configuration for this deployment (Single Camera, 113 VLM tokens), we calculate the total Multiply-Accumulate (MAC) operations per inference.
@@ -130,7 +140,7 @@ Crucially, for the *Action Expert*, we utilize a static optimization for the Cro
   caption: [Computational Demand Table],
   styled-table(
     columns: 4,
-    table.header([*Component*], [*MACs (G)*], [*FLOPs (G)*], [*% of Total*]),
+    table.header([*Component*], [*MACs (G)*], [*OPs (G)*], [*% of Total*]),
     [Vision Encoder],
     [106.30],
     [212.60],
@@ -167,11 +177,33 @@ Another technique we use is mapping our MAC operations to DSP slices, which are 
 
 === Memory Capacity Constraints
 
-#todo(Ezra, done: 0%)[
+
+#todo(Ezra, done: 100%)[
   *On-chip Memory*:
   - Analyze HBM vs BRAM/URAM usage.
   - Discuss buffering strategies for weights/activations.
 ]
+
+*Memory Footprint Analysis*
+
+We analyze the storage requirements to determine where data must reside. The total model weights (~359 MB) far exceed the U280's on-chip capacity (~40-50 MB), mandating off-chip HBM storage. However, the peak activation footprint (dominated by the Vision Encoder's large patches) is only ~1.57 MB, easily fitting within on-chip BRAM/URAMs, enabling effective double-buffering.
+
+#figure(
+  caption: [Memory Footprint Requirements (Storage)],
+  styled-table(
+    columns: 3,
+    table.header([*Metric*], [*Size*], [*Placement*]),
+    [Total Weights],
+    [359.08 MB],
+    [Off-Chip (HBM)],
+    [Peak Activations],
+    [1.57 MB],
+    [On-Chip (BRAM/URAM)],
+    [Action Context Cache],
+    [54.24 KB],
+    [On-Chip (Register/BRAM)],
+  ),
+) <tab:mem-footprint>
 
 === Memory Port Constraints
 
@@ -183,12 +215,31 @@ Another technique we use is mapping our MAC operations to DSP slices, which are 
 
 === Memory Bandwidth Constraints
 
-#todo(Ezra, done: 0%)[
-  *Bandwidth Bounds*:
-  - Calculate peak theoretical bandwidth (HBM on U280).
-  - Compare with required bandwidth for kernels.
-  - Relate to Operational Intensity (OI).
-]
+*Theoretical Data Transfer Analysis*
+
+Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the large model size (approx. 180MB for weights), we assume a *layer-by-layer* execution model where weights must be streamed from HBM for each layer. For the Vision and VLM components, this means reading weights once per inference. However, for the *Action Expert*, the 10-step diffusion process requires re-streaming the dynamic weights 10 times, leading to a massive memory bandwidth demand.
+
+#figure(
+  caption: [Minimum Off-Chip Memory Transfer Per Inference (INT8)],
+  styled-table(
+    columns: 3,
+    table.header([*Component*], [*Transfer (MB)*], [*Notes*]),
+    [Vision Encoder],
+    [103.81],
+    [Weights (1x) + I/O],
+    [VLM Backbone],
+    [160.76],
+    [Weights (1x) + I/O],
+    [Action Expert],
+    [1113.75],
+    [Weights (10x) + I/O (10x)],
+    [*Total*],
+    [*1378.32*],
+    [Dominated by Action Loop],
+  ),
+) <tab:mem-transfer>
+
+*Analysis*: The Action Expert accounts for over 80% of the total off-chip data transfer. With a realistic HBM bandwidth of ~300 GB/s, the memory transfer alone sets a hard lower bound on latency of approx. 4.6 ms ($1378 " MB" / 300 " GB/s"$), not accounting for compute or latency hiding.
 
 
 /**********************************************************/
