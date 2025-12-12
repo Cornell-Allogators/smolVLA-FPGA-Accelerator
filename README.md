@@ -1,6 +1,6 @@
 # smolVLA-FPGA-Accelerator
 
-## Download Report Here: [final-report.pdf](https://github.com/Cornell-Allogators/smolVLA-FPGA-Accelerator/releases/download/latest/main.pdf)
+## Download Report Here: <a href="https://github.com/Cornell-Allogators/smolVLA-FPGA-Accelerator/releases/download/latest/main.pdf" target="_blank">Final Report.</a>
 
 ## Help
 
