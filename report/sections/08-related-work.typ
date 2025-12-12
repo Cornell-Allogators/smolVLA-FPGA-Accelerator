@@ -4,7 +4,7 @@
 
 = Related Work
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *Literature Review*:
   - Cite recent FPGA accelerators for Transformers (e.g., FTRANS, etc.).
   - Discuss other VLA/VLM acceleration efforts.

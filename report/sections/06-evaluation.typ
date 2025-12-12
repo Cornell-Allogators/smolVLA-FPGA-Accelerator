@@ -8,7 +8,7 @@
 
 == Evaluation of Attention Layers
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *Attention Metrics*:
   - Report exact latency (cycles/ms) for the Cross-Attention kernel.
   - Report resource usage (DSP, BRAM, LUT, FF) from Vivado reports.
@@ -17,7 +17,7 @@
 
 === Ablation
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *Attention Ablation*:
   - Compare baseline (unoptimized) vs tiled vs systolic array versions.
   - Explain which optimization yielded the biggest gain.
@@ -47,7 +47,7 @@
 
 == Evaluation of MLP Layers
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *MLP Metrics*:
   - Report latency and resource usage for MLP layers.
   - Discuss impact of batch size (if applicable) or sequence length.
@@ -55,7 +55,7 @@
 
 === Ablation
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *MLP Ablation*:
   - Show progression of optimizations for MLP.
 ]

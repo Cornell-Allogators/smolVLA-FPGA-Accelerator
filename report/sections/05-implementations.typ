@@ -8,7 +8,7 @@
 
 == Allo Kernels
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *General Kernel Structure*:
   - Explain how kernels are defined in Allo.
   - Discuss common optimization patterns applied (tiling from `schedule` functions in `matrix_multiplies.py`).
@@ -19,7 +19,7 @@
 
 == Accelerating Attention Layers
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *Attention Implementation*:
   - Detail `hardware_build/attention/cross_attention`.
   - Explain the Q, K, V matrix multiplication chain.
@@ -36,7 +36,7 @@
 
 == Accelerating MLP Layers
 
-#todo(Ezra, done: false)[
+#todo(Ezra, done: 0%)[
   *MLP Implementation*:
   - Detail `hardware_build/mlp`.
   - Discuss the Feed-Forward Network structure (GeLU activation).
