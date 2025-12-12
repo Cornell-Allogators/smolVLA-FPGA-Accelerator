@@ -8,7 +8,7 @@
 
 == SmolVLA
 
-#todo(Sam, done: 0%)[
+#todo(Sam, done: 20%)[
   *General Overview*: Explain the SmolVLA architecture.
   - Discuss the motivation for small VLA models from the paper.
   - Describe the overall pipeline: Visual Input -> Action Output.
@@ -21,7 +21,7 @@ The VLM processes the visual observations (from up to 3 cameras) and the user's 
 
 === Action Expert
 
-#todo(Ezra, done: 0%)[
+#todo(Ezra, done: 20%)[
   *Action Expert Details*:
   - Explain the role of the Action Expert in the SmolVLA pipeline.
   - Discuss how it interacts with the VLM/LLM components.
@@ -38,7 +38,7 @@ The core workload consists of Cross-Attention layers, where the query tokens (re
 
 === Large Language Model
 
-#todo(Ezra, done: 0%)[
+#todo(Ezra, done: 20%)[
   *LLM Component*:
   - Describe the specific LLM used.
   - Explain the prompt engineering or fine-tuning aspect.
@@ -50,7 +50,7 @@ The VLM component of SmolVLA handles the semantic understanding of the scene. It
 
 === Vision Transformer Model
 
-#todo(Sam, done: 0%)[
+#todo(Sam, done: 20%)[
   *ViT Details*:
   - Describe the Vision Transformer architecture (Patch Embedding, Attention Blocks).
   - Mention specific parameters from `hardware_build/attention/config.py` (e.g., hidden size, number of heads).
@@ -62,7 +62,7 @@ The visual front-end typically employs a Vision Transformer (ViT) to extract fea
 
 == Allo
 
-#todo(Stanley, done: 50%)[
+#todo(Stanley, done: 20%)[
   *Allo Framework*:
   - Explain the core philosophy: Decoupling algorithm from schedule.
   - Discuss the MLIR-based intermediate representation.
@@ -82,7 +82,7 @@ Key features of Allo used in this project include:
 
 === Spatial Architectures
 
-#todo(Ezra, done: 0%)[
+#todo(Ezra, done: 10%)[
   *Spatial Dataflow*:
   - Explain systolic arrays and dataflow architectures.
 ]
@@ -91,7 +91,7 @@ Spatial architectures, such as Systolic Arrays, are a natural fit for the dense 
 
 === Temporal Architectures
 
-#todo(Ezra, done: 0%)[
+#todo(Ezra, done: 10%)[
   *Temporal Execution*:
   - Explain instruction-based execution.
 ]

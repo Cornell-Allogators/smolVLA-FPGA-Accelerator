@@ -5,7 +5,7 @@
 = Introduction
 
 
-#todo(Ezra, done: 0%)[
+#todo(Ezra, done: 50%)[
   *Project Context*:
   - Introduce the problem: Efficiently running VLA (Vision-Language-Action) models on edge devices.
   - Mention "SmolVLA" as the specific target workload.

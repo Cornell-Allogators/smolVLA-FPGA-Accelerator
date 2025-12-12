@@ -16,13 +16,13 @@
     if done >= 100% {
       align(left)[
         #text(size: 14pt)[
-          *Written By: *#who
+          *Written By: *#who #h(1fr) *(DONE)*
         ]
       ]
     } else {
       align(left)[
         #text(size: 14pt)[
-          *TODO: *#who
+          *TODO: *#who  #h(1fr) *(#done)*
         ] \ #text[
           #body
         ]

@@ -43,7 +43,7 @@
 == Resource Constraints
 === Compute Resource Constraints
 
-#todo(Stanley, done: 0%)[
+#todo(Stanley, done: 10%)[
   *DSP/Logic Constraints*:
   - Discuss U280 DSP limits vs. required DSPs for matrix mults.
   - Explain how data types (int8 vs fp32) affect this.
