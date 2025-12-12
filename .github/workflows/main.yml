@@ -15,15 +15,18 @@ jobs:
         uses: lvignoli/typst-action@main
         with:
           source_file: report/main.typ
-
+    
       - name: Upload PDF file
         uses: actions/upload-artifact@v4
         with:
           name: PDF
-          path: ece6775-final-report-srb343-er495-ss3679-isf9.pdf
+          path: report/main.pdf
 
-      - name: Release
+      - name: Update Latest Release
         uses: softprops/action-gh-release@v1
         with:
-          name: "Report — $(date +%Y-%m-%d-%H:%M)"
-          files: main.pdf
+          name: "Latest Report (${{ github.event.head_commit.timestamp }})"
+          tag_name: latest
+          files: report/main.pdf
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
