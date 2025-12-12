@@ -53,25 +53,34 @@
   - Discuss impact of batch size (if applicable) or sequence length.
 ]
 
+
 === Ablation
 
-#todo(Stanley, done: 0%)[
+#todo(Stanley , done: 0%)[
   *MLP Ablation*:
   - Show progression of optimizations for MLP.
 ]
 
+Several architectural optimizations were explored for the MLP. Our baseline design did not utilize tiling, but was a cascaded systolic design in which multiple systolic arrays were instantiated and connected directly in sequence, with each dedicated to a specific layer of the MLP. This version has relatively low latency, but has very high resource utilization due to the lack of hardware reuse and tiling.
+
+Spatial parallelism was exploited in the fully connected layers via systolic array tiling
+
+The main contributors to the latency for the MLP are the two fully connected layers, FC1 and FC2, as they account for the majority of the MAC operations. Synthesis was run for varying dimensions of the systolic array --- as the dimensions of the systolic array increase, latency decreases due to higher parallelism the matrix multiplication. Additionally, BRAM utilization decreased as the systolic array sized increased due to the use of tiling.
+
 #figure(
   caption: [Ablation of MLP Kernels],
   styled-table(
-    columns: 4,
-    table.header([Kernel], [Speed (ms)], [BRAM %], [DSP %]),
+    columns: 5,
+    table.header([Kernel], [Speed (ms)], [BRAM %], [LUT %], [DSP %]),
     [Baseline],
-    [TODO],
-    [TODO],
-    [TODO],
+    [71.13],
+    [115.05%],
+    [257.54%],
+    [3.49%],
     [Optimized],
-    [TODO],
-    [TODO],
-    [TODO],
+    [25.05],
+    [96.58%],
+    [3.31%],
+    [0.65%],
   ),
 ) <tab:mlp-ablation>
