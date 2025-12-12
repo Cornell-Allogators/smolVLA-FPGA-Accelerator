@@ -22,13 +22,8 @@ jobs:
           name: PDF
           path: ece6775-final-report-srb343-er495-ss3679-isf9.pdf
 
-      - name: Get current date
-        id: date
-        run: echo "DATE=$(date +%Y-%m-%d-%H:%M)" >> $GITHUB_ENV
-
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: github.ref_type == 'tag'
         with:
-          name: "${{ github.ref_name }} — ${{ env.DATE }}"
+          name: "Report — $(date +%Y-%m-%d-%H:%M)"
           files: main.pdf
