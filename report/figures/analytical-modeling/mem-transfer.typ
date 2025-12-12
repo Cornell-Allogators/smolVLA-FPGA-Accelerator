@@ -1,3 +1,5 @@
+#import "../../template/template.typ": *
+
 #figure(
   caption: [Minimum Off-Chip Memory Transfer Per Inference (INT8)],
   styled-table(

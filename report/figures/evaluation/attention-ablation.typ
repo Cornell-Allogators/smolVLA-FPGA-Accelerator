@@ -1,3 +1,5 @@
+#import "../../template/template.typ": *
+
 #figure(
   caption: [Ablation of Attention Kernels],
   styled-table(

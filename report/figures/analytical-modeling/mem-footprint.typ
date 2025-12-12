@@ -1,3 +1,5 @@
+#import "../../template/template.typ": *
+
 #figure(
   caption: [Memory Footprint Requirements (Storage)],
   styled-table(

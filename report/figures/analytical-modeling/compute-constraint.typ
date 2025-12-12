@@ -1,3 +1,5 @@
+#import "../../template/template.typ": *
+
 #figure(
   caption: [Computational Demand Breakdown by Model Component],
   styled-table(
