@@ -63,7 +63,7 @@ The Vision Encoder is the primary focus of this acceleration effort. The visual 
 
 == Allo
 
-#todo(Stanley, done: 20%)[
+#todo(Stanley, done: 100%)[
   *Allo Framework*:
   - Explain the core philosophy: Decoupling algorithm from schedule.
   - Discuss the MLIR-based intermediate representation.

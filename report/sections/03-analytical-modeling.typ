@@ -28,13 +28,13 @@ The Vision Encoder is responsible for processing the raw camera inputs.
 *2. VLM Backbone (Vision-Language Model)*
 The VLM fuses the visual embeddings with the text instructions.
 - *Hidden Size*: 960.
-- *Input Tokens*: 241 Total Tokens. This comprises 192 Visual Tokens, 48 Text Tokens (Instruction), and 1 Robot State Token.
+- *Input Tokens*: 113 (for one camera) Total Tokens. This comprises 192 Visual Tokens, 48 Text Tokens (Instruction), and 1 Robot State Token.
 
 *3. Action Expert*
 The Action Expert generates the control sequence using a conditional diffusion process (Flow Matching).
 - *Hidden Size*: 720 (0.75x of VLM width).
 - *Heads*: 12 Query Heads, 4 Key/Value Heads (Grouped Query Attention).
-- *Head Dimension*: 80.
+- *Head Dimension*: 60.
 - *Sequence Length*: 50 Action Tokens (Prediction Horizon).
 - *Diffusion Steps*: 10 iterations per inference.
 - *Interaction*: The 50 Action Tokens attend to the 241 VLM Context Tokens (Cross-Attention).
@@ -121,6 +121,7 @@ The Action Expert generates the control sequence using a conditional diffusion p
   ) <tab:macs-gqa>
 
 
+  
 #figure(
   caption: [Computational Demand Table],
   styled-table(
@@ -143,15 +144,17 @@ The Action Expert generates the control sequence using a conditional diffusion p
 == Resource Constraints
 === Compute Resource Constraints
 
-#todo(Stanley, done: 10%)[
+#todo(Stanley, done: 100%)[
   *DSP/Logic Constraints*:
   - Discuss U280 DSP limits vs. required DSPs for matrix mults.
   - Explain how data types (int8 vs fp32) affect this.
 ]
 
-Fundamentally, most of the operations in SmolVLA can be broken down to matrix operations.These operations can then further broken down into multiply and addition operations, commonly called multiply accumulated operations, also know as MACs. The naive approach is to implement all of these operations to the fabric of the FPGA or synthesizing all of the operations to LUTs and Flip Flops. However, this can be quite inefficient, as expressing floating point operations can requires thousands of LUTs and flip flops. One way to help solve this issues is lower precision datatypes. The default floating point data type is FP32, taking a whoping 4 bytes pre value. We can use quantize our model to us FP16 or Bfloat16, FP8, or even FP4 to save memory while not losing too much precision. Another manner is convert our relatively complex floating point FP32 values into integers. This integers ALUs take up less resources than their floating point counterparts, making them a potentially interesting avenue to export. H
+Fundamentally, most operations in SmolVLA can be reduced to matrix operations. These operations can in turn be broken down into multiply and addition steps, commonly called multiply and accumulate operations, or MACs. A naïve approach is to implement all of these operations directly in the FPGA fabric, synthesizing them into LUTs and flip-flops. However, this can be highly inefficient because floating-point operations often require thousands of LUTs and flip-flops.
 
-Another approach we will use is making our MAC operations to DSP, hardened blocks on the FPGA that can multiple and accumulate every cycle, assuming a pipeline. This allows us to save on precious hardware resources, allowing us to create larger designs on an FPGA. On the AMD Alveo U280, we have 9024 of these DSP slices, allowing up to create larger desinigng .
+One way to reduce this overhead is to use lower-precision datatypes. The default floating-point format is FP32, which uses a whopping 4 bytes per value. By quantizing the model to FP16, bfloat16, FP8, or even FP4, we can significantly reduce memory usage while maintaining acceptable precision. Another approach is to convert the relatively complex FP32 values into integers. Integer ALUs require far fewer hardware resources than their floating-point counterparts, which makes them an appealing option for acceleration.
+
+Another technique we use is mapping our MAC operations to DSP slices, which are hardened blocks on the FPGA designed to perform multiply and accumulate operations every cycle when pipelined. This saves valuable hardware resources and allows larger, more complex designs. On the AMD Alveo U280, there are 9,024 DSP slices, which means we can process at least 9,024 MAC operations per clock cycle with full utilization. However, we can use instantiate "soft" FPUs/ALUs on the LUT fabric, or we can use bit packing tricks to do up to 4 int4 MACs per clock cycle per DSP. 
 
 === Memory Capacity Constraints
 
