@@ -6,5 +6,12 @@
 
 
 #todo(Ezra, done: false)[
-  Write the introduction
+  *Project Context*:
+  - Introduce the problem: Efficiently running VLA (Vision-Language-Action) models on edge devices.
+  - Mention "SmolVLA" as the specific target workload.
+  - State the thesis: FPGA acceleration using Allo.
+  - Outline the contributions:
+    1. Analysis of SmolVLA computational requirements.
+    2. Implementation of key kernels using Allo.
+    3. Evaluation of performance/efficiency on U280.
 ]

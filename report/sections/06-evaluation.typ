@@ -9,30 +9,38 @@
 == Evaluation of Attention Layers
 
 #todo(Ezra, done: false)[
-  Write about the Evaluation of Attention Layers
+  *Attention Metrics*:
+  - Report exact latency (cycles/ms) for the Cross-Attention kernel.
+  - Report resource usage (DSP, BRAM, LUT, FF) from Vivado reports.
+  - Compare against the analytical model predictions.
 ]
 
 === Ablation
 
 #todo(Ezra, done: false)[
-  Write the Ablation for Attention
+  *Attention Ablation*:
+  - Compare baseline (unoptimized) vs tiled vs systolic array versions.
+  - Explain which optimization yielded the biggest gain.
 ]
 
 #figure(
   caption: [Ablation of Attention Kernels],
-  table(
-    /*** FORMATTING ***/
-    columns: 3,
-    align: (left, right),
-    inset: (x: 8pt, y: 4pt),
-    stroke: (x, y) => if y <= 1 { (top: 0.5pt) },
-    fill: (x, y) => if y > 0 and calc.rem(y, 2) == 0  { rgb("#efefef") },
-    /*** DATA ***/
-    table.header([Kernel], [Speed], [BRAM]),
-    [Bad], [10s], [30%],
-    [Ok], [1s], [40%],
-    [Good], [100ms], [30%] 
-  )
+  styled-table(
+    columns: 4,
+    table.header([Kernel], [Speed (ms)], [BRAM %], [DSP %]),
+    [Baseline],
+    [TODO],
+    [TODO],
+    [TODO],
+    [Tiled],
+    [TODO],
+    [TODO],
+    [TODO],
+    [Systolic],
+    [TODO],
+    [TODO],
+    [TODO],
+  ),
 ) <tab:attention-ablation>
 
 /**********************************************************/
@@ -40,28 +48,30 @@
 == Evaluation of MLP Layers
 
 #todo(Ezra, done: false)[
-  Write about the Evaluation of MLP Layers
+  *MLP Metrics*:
+  - Report latency and resource usage for MLP layers.
+  - Discuss impact of batch size (if applicable) or sequence length.
 ]
 
 === Ablation
 
 #todo(Ezra, done: false)[
-  Write the Ablation for MLP
+  *MLP Ablation*:
+  - Show progression of optimizations for MLP.
 ]
 
 #figure(
   caption: [Ablation of MLP Kernels],
-  table(
-    /*** FORMATTING ***/
-    columns: 3,
-    align: (left, right),
-    inset: (x: 8pt, y: 4pt),
-    stroke: (x, y) => if y <= 1 { (top: 0.5pt) },
-    fill: (x, y) => if y > 0 and calc.rem(y, 2) == 0  { rgb("#efefef") },
-    /*** DATA ***/
-    table.header([Kernel], [Speed], [BRAM]),
-    [Bad], [10s], [30%],
-    [Ok], [1s], [40%],
-    [Good], [100ms], [30%] 
-  )
+  styled-table(
+    columns: 4,
+    table.header([Kernel], [Speed (ms)], [BRAM %], [DSP %]),
+    [Baseline],
+    [TODO],
+    [TODO],
+    [TODO],
+    [Optimized],
+    [TODO],
+    [TODO],
+    [TODO],
+  ),
 ) <tab:mlp-ablation>
