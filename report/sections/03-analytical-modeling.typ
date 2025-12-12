@@ -19,32 +19,32 @@ The computational workload of SmolVLA is distributed across three distinct sub-m
 
 *1. Vision Encoder (ViT)*
 The Vision Encoder is responsible for processing the raw camera inputs.
-- *Architecture*: Standard Vision Transformer (12 Layers).
-- *Hidden Size ($D$)*: 768.
-- *MLP Expansion*: 4x (Intermediate Dim = 3072).
-- *Heads*: 12.
-  - *Input Tokens*: 1024 patches per image. The Vision Encoder treats each $32 times 32$ patch (for a $512 times 512$ image) as a token.
+  - *Architecture*: Standard Vision Transformer (12 Layers).
+  - *Hidden Size ($D$)*: 768.
+  - *MLP Expansion*: 4x (Intermediate Dim = 3072).
+  - *Heads*: 12.
+    - *Input Tokens*: 1024 patches per image. The Vision Encoder treats each $32 times 32$ patch (for a $512 times 512$ image) as a token.
 
 *2. VLM Backbone (Vision-Language Model)*
 The VLM fuses the visual embeddings with the text instructions.
-- *Hidden Size*: 960.
-- *Input Tokens*: 113 (for one camera) Total Tokens. This comprises 192 Visual Tokens, 48 Text Tokens (Instruction), and 1 Robot State Token.
+  - *Hidden Size*: 960.
+  - *Input Tokens*: 113 (for one camera) Total Tokens. This comprises 192 Visual Tokens, 48 Text Tokens (Instruction), and 1 Robot State Token.
 
 *3. Action Expert*
 The Action Expert generates the control sequence using a conditional diffusion process (Flow Matching).
-- *Hidden Size*: 720 (0.75x of VLM width).
-- *Heads*: 12 Query Heads, 4 Key/Value Heads (Grouped Query Attention).
-- *Head Dimension*: 60.
-- *Sequence Length*: 50 Action Tokens (Prediction Horizon).
-- *Diffusion Steps*: 10 iterations per inference.
-- *Interaction*: The 50 Action Tokens attend to the 241 VLM Context Tokens (Cross-Attention).
+  - *Hidden Size*: 720 (0.75x of VLM width).
+  - *Heads*: 12 Query Heads, 4 Key/Value Heads (Grouped Query Attention).
+  - *Head Dimension*: 60.
+  - *Sequence Length*: 50 Action Tokens (Prediction Horizon).
+  - *Diffusion Steps*: 10 iterations per inference.
+  - *Interaction*: The 50 Action Tokens attend to the 241 VLM Context Tokens (Cross-Attention).
 
-  *Compute Analysis*
-  Since our FPGA implementation utilizes `int8` quantization to maximize throughput on DSP slices, we quantify computational complexity in terms of Multiply-Accumulate operations (MACs) rather than FLOPs. A single MAC corresponds to one multiplication and one addition (effectively 2 ops if counting FLOPs).
+*Compute Analysis*
+Since our FPGA implementation utilizes `int8` quantization to maximize throughput on DSP slices, we quantify computational complexity in terms of Multiply-Accumulate operations (MACs) rather than FLOPs. A single MAC corresponds to one multiplication and one addition (effectively 2 ops if counting FLOPs).
 
-  The computational Demands are summarized by the expected MACs per token for a single Transformer layer. We distinguish between the Standard Multi-Head Attention (MHA) used in the Vision Encoder and VLM, and the Grouped Query Attention (GQA) used in the Action Expert.
+The computational Demands are summarized by the expected MACs per token for a single Transformer layer. We distinguish between the Standard Multi-Head Attention (MHA) used in the Vision Encoder and VLM, and the Grouped Query Attention (GQA) used in the Action Expert.
 
-  *Definitions*:
+*Definitions*:
   - $L$: Sequence Length (Number of tokens)
   - $D$: Hidden Dimension
   - $D_h$: Head Dimension ($D / "Heads"$)
@@ -52,100 +52,57 @@ The Action Expert generates the control sequence using a conditional diffusion p
   - $H_("kv")$: Number of Key/Value Heads
   - $E$: MLP Expansion Factor (typically 4)
 
-  #figure(
-    caption: [Expected MACs for Standard Transformer Layer (MHA)],
-    styled-table(
-      columns: (auto, auto, auto),
-      inset: 10pt,
-      align: horizon,
-      table.header([*Operation*], [*MACs Formula*], [*Notes*]),
-      [Q Projection],
-      [$L dot D^2$],
-      [$D times D$ weights],
-      [K Projection],
-      [$L dot D^2$],
-      [$D times D$ weights],
-      [V Projection],
-      [$L dot D^2$],
-      [$D times D$ weights],
-      [Attn Scores],
-      [$L^2 dot D$],
-      [$Q K^T$ (per head sum is $D_h$)],
-      [Attn Update],
-      [$L^2 dot D$],
-      [$A V$ (per head sum is $D_h$)],
-      [Output Proj],
-      [$L dot D^2$],
-      [$D times D$ weights],
-      [MLP FFN],
-      [$2 dot E dot L dot D^2$],
-      [Typically $8 L D^2$ ($E=4$)],
-      [*Total*],
-      [$approx 12 L D^2 + 2 L^2 D$],
-      [Dominated by linear layers],
-    ),
-  ) <tab:macs-standard>
-
-  #figure(
-    caption: [Expected MACs for Grouped Query Attention Layer (GQA)],
-    styled-table(
-      columns: (auto, auto, auto),
-      inset: 10pt,
-      align: horizon,
-      table.header([*Operation*], [*MACs Formula*], [*Notes*]),
-      [Q Projection],
-      [$L dot D^2$],
-      [Full Query Heads],
-      [K Projection],
-      [$L dot D^2 dot (H_("kv")/H_q)$],
-      [Reduced Heads],
-      [V Projection],
-      [$L dot D^2 dot (H_("kv")/H_q)$],
-      [Reduced Heads],
-      [Attn Scores],
-      [$L^2 dot D$],
-      [Broadcast K to matching Qs],
-      [Attn Update],
-      [$L^2 dot D$],
-      [Broadcast V to matching Qs],
-      [Output Proj],
-      [$L dot D^2$],
-      [Full Output],
-      [MLP FFN],
-      [$2 dot E dot L dot D^2$],
-      [Standard MLP],
-      [*Total*],
-      [$approx L D^2 (10 + 2 H_("kv")/H_q) + 2 L^2 D$],
-      [Savings in K/V Proj],
-    ),
-  ) <tab:macs-gqa>
-
-
+#figure(
+  caption: [Expected MACs for Standard Transformer Layer (MHA)],
+  styled-table(
+    columns: (auto, auto, auto),
+    inset: 10pt,
+    align: horizon,
+    table.header([*Operation*], [*MACs Formula*], [*Notes*]),
+    [Q Projection],
+    [$L dot D^2$],
+    [$D times D$ weights],
+    [K Projection],
+    [$L dot D^2$],
+    [$D times D$ weights],
+    [V Projection],
+    [$L dot D^2$],
+    [$D times D$ weights],
+    [Attn Scores],
+    [$L^2 dot D$],
+    [$Q K^T$ (per head sum is $D_h$)],
+    [Attn Update],
+    [$L^2 dot D$],
+    [$A V$ (per head sum is $D_h$)],
+    [Output Proj],
+    [$L dot D^2$],
+    [$D times D$ weights],
+    [MLP FFN],
+    [$2 dot E dot L dot D^2$],
+    [Typically $8 L D^2$ ($E=4$)],
+    [*Total*],
+    [$approx 12 L D^2 + 2 L^2 D$],
+    [Dominated by linear layers],
+  ),
+) <tab:macs-standard>
 
 #figure(
-  caption: [Computational Demand Table],
+  caption: [Expected MACs for Grouped Query Attention Layer (GQA)],
   styled-table(
-    columns: 4,
-    table.header([*Component*], [*MACs (G)*], [*FLOPs (G)*], [*% of Total*]),
-    [Vision Encoder],
-    [106.30],
-    [212.60],
-    [58.4%],
-    [VLM Backbone],
-    [18.17],
-    [36.34],
-    [10.0%],
-    [Action Expert],
-    [57.45],
-    [114.90],
-    [31.6%],
-    [*Total*],
-    [*181.92*],
-    [*363.84*],
-    [*100%*],
+    columns: (auto, auto, auto),
+    inset: 10pt,
+    align: horizon,
+    table.header([*Operation*], [*MACs Formula*], [*Notes*]),
+    [Q Projection],   [$L dot D^2$],  [Full Query Heads],
+    [K Projection],   [$L dot D^2 dot (H_("kv")/H_q)$],   [Reduced Heads],
+    [V Projection],   [$L dot D^2 dot (H_("kv")/H_q)$],   [Reduced Heads],
+    [Attn Scores],    [$L^2 dot D$],    [Broadcast K to matching Qs],
+    [Attn Update],    [$L^2 dot D$],    [Broadcast V to matching Qs],
+    [Output Proj],    [$L dot D^2$],    [Full Output],
+    [MLP FFN],    [$2 dot E dot L dot D^2$],    [Standard MLP],
+    [*Total*],    [$approx L D^2 (10 + 2 H_("kv")/H_q) + 2 L^2 D$],   [Savings in K/V Proj],
   ),
-) <tab:compute-constraint>
-
+) <tab:macs-gqa>
 
 /**********************************************************/
 

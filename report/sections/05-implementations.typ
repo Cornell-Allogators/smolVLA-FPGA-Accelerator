@@ -42,3 +42,5 @@
   - Discuss the Feed-Forward Network structure (GeLU activation).
   - Mention resource reuse between layer 1 and layer 2 projections.
 ]
+
+The MLP's most compute intensive layer are the two FFN layers. These can be computed as a matrix-matrix multiplication, then a 
