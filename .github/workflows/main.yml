@@ -20,7 +20,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: PDF
-          path: *.pdf
+          path: ece6775-final-report-srb343-er495-ss3679-isf9.pdf
 
       - name: Get current date
         id: date
