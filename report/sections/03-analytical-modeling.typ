@@ -14,11 +14,37 @@
 
 == Computational Demands
 
-#todo(Ezra, done: 0%)[
-  *Compute Analysis*:
-  - List FLOPs counts for each major kernel (Attention, MLP).
-  - Reference `hardware_build/attention/config.py` for dimensions.
-]
+*Compute Analysis*:
+The computational workload of SmolVLA is distributed across three distinct sub-models, each with specific dimensions and token processing requirements. We break down the parameters for each to establish the baseline for our FLOPs calculations.
+
+*1. Vision Encoder (ViT)*
+The Vision Encoder is responsible for processing the raw camera inputs.
+- *Architecture*: Standard Vision Transformer (12 Layers).
+- *Hidden Size ($D$)*: 768.
+- *MLP Expansion*: 4x (Intermediate Dim = 3072).
+- *Heads*: 12.
+- *Input Tokens*: 64 patches per image. With 3 cameras, this results in $64 times 3 = 192$ visual tokens interacting in the VLM.
+
+*2. VLM Backbone (Vision-Language Model)*
+The VLM fuses the visual embeddings with the text instructions.
+- *Hidden Size*: 960.
+- *Input Tokens*: 241 Total Tokens. This comprises 192 Visual Tokens, 48 Text Tokens (Instruction), and 1 Robot State Token.
+
+*3. Action Expert*
+The Action Expert generates the control sequence using a conditional diffusion process (Flow Matching).
+- *Hidden Size*: 720 (0.75x of VLM width).
+- *Heads*: 12 Query Heads, 4 Key/Value Heads (Grouped Query Attention).
+- *Head Dimension*: 80.
+- *Sequence Length*: 50 Action Tokens (Prediction Horizon).
+- *Diffusion Steps*: 10 iterations per inference.
+- *Interaction*: The 50 Action Tokens attend to the 241 VLM Context Tokens (Cross-Attention).
+
+*Compute complexity formula for Transformer Layers*:
+For a standard layer with sequence length $L$ and hidden dimension $D$:
+$ "FLOPs"_("Attn") = 4 L D^2 + 2 L^2 D $ (Projections + Attention Score/Update)
+$ "FLOPs"_("MLP") = 8 L D^2 $ (2 projections with 4x expansion)
+$ "Total" approx 12 L D^2 $
+
 
 #figure(
   caption: [Computational Demand Table],
