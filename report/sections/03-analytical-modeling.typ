@@ -42,7 +42,7 @@ The Action Expert generates the control sequence using a conditional diffusion p
 *Compute Analysis*
 Since our FPGA implementation utilizes `int8` quantization to maximize throughput on DSP slices, we quantify computational complexity in terms of Multiply-Accumulate operations (MACs) rather than FLOPs. A single MAC corresponds to one multiplication and one addition (effectively 2 ops if counting FLOPs).
 
-The computational Demands are summarized by the expected MACs per token for a single Transformer layer. We distinguish between the Standard Multi-Head Attention (MHA) used in the Vision Encoder and VLM, and the Grouped Query Attention (GQA) used in the Action Expert.
+The computational Demands are summarized by the expected MACs per token for a single Transformer layer. We distinguish between the Standard Multi-Head Attention (MHA) used in the Vision Encoder, and the Grouped Query Attention (GQA) used in the VLM Backbone and Action Expert.
 
 *Definitions*:
 - $L$: Sequence Length (Number of tokens)
@@ -186,22 +186,34 @@ Another technique we use is mapping our MAC operations to DSP slices, which are 
 
 *Memory Footprint Analysis*
 
-We analyze the storage requirements to determine where data must reside. The total model weights (~359 MB) far exceed the U280's on-chip capacity (~40-50 MB), mandating off-chip HBM storage. However, the peak activation footprint (dominated by the Vision Encoder's large patches) is only ~1.57 MB, easily fitting within on-chip BRAM/URAMs, enabling effective double-buffering.
+We analyze the storage requirements to determine where data must reside. The original model weights in `bfloat16` precision occupy approx. 897 MB. By quantizing to `int8`, we reduce the total model footprint to *448 MB*. This still exceeds the U280's on-chip capacity (~40-50 MB), mandating off-chip HBM storage.
 
 #figure(
   caption: [Memory Footprint Requirements (Storage)],
   styled-table(
     columns: 3,
-    table.header([*Metric*], [*Size*], [*Placement*]),
-    [Total Weights],
-    [359.08 MB],
+    table.header([*Metric*], [*Size (INT8)*], [*Placement*]),
+    [Vision Encoder],
+    [86.31 MB],
     [Off-Chip (HBM)],
+    [VLM Backbone],
+    [204.63 MB],
+    [Off-Chip (HBM)],
+    [Action Expert],
+    [98.22 MB],
+    [Off-Chip (HBM)],
+    [Embeddings/Heads],
+    [59.11 MB],
+    [Off-Chip (HBM)],
+    [*Total Weights*],
+    [*448.27 MB*],
+    [*Off-Chip (HBM)*],
     [Peak Activations],
     [1.57 MB],
     [On-Chip (BRAM/URAM)],
     [Action Context Cache],
     [54.24 KB],
-    [On-Chip (Register/BRAM)],
+    [On-Chip],
   ),
 ) <tab:mem-footprint>
 
@@ -246,11 +258,40 @@ Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the
 
 == Performance Estimation
 
-#todo(Sam, done: 0%)[
-  *Roofline Model*:
-  - Construct the roofline chart.
-  - Place kernels on the roofline based on OI.
-]
+
+#figure(
+  caption: [Operational Intensity and Hardware Limits],
+  styled-table(
+    columns: 4,
+    table.header([*Component*], [*OI (Ops/Byte)*], [*Bound*], [*Peak Perf*]),
+    [Vision Encoder],
+    [2048],
+    [Compute Bound],
+    [5.4 TOPS],
+    [VLM Backbone],
+    [226],
+    [Compute Bound],
+    [5.4 TOPS],
+    [Action Expert],
+    [103],
+    [Compute Bound],
+    [5.4 TOPS],
+    [*U280 Ridge*],
+    [*11.8*],
+    [---],
+    [---],
+  ),
+) <tab:oi-analysis>
+
+#figure(
+  image("../figures/roofline_analysis.png", width: 80%),
+  caption: [Roofline Analysis of SmolVLA on Alveo U280],
+) <fig:roofline>
+
+*Analysis*:
+The Roofline analysis reveals that all three components of SmolVLA sit well to the right of the U280's ridge point (~11.8 Ops/Byte). This indicates that the design is fundamentally *compute-bound*, limited by the DSP processing power rather than HBM bandwidth.
+- The *Vision Encoder* is extremely compute-bound (OI ~2048), suggesting that optimizing for DSP utilization (e.g., using systolic arrays) will yield direct performance gains.
+- The *Action Expert*, while still compute-bound (OI ~103), works significantly closer to the memory wall due to the 10x weight reloading required by the diffusion process. Any inefficiency in the memory controller could easily shift this component into a bandwidth-bound regime.
 
 === Latency Estimation
 

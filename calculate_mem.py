@@ -107,13 +107,26 @@ action_mem = calc_action_mem()
 # 1. Total Weight Storage (HBM Requirement)
 # We need to re-sum the raw weight params, not just the transfer.
 # Vision: (12 * ((4*768^2) + (2*768*3072))) * 1
+# 1. Total Weight Storage (HBM Requirement)
+# We need to re-sum the raw weight params, not just the transfer.
+# Vision: (12 * ((4*768^2) + (2*768*3072))) * 1
 vis_w_size = 12 * ((4 * 768**2) + (2 * 768 * 3072)) * DTYPE_SIZE
 # VLM: 16 * ((960^2 * 8/3) + (3*960*2560))
 vlm_w_size = 16 * ((960**2 * (8/3)) + (3 * 960 * 2560)) * DTYPE_SIZE
-# Action: 16 * (SelfAttn + CrossAttn + MLP)
-# Self: 720^2 * 8/3. Cross: 2*720^2 + 2*960*240. MLP: 3*720*2048.
-act_layer_w = (720**2 * (8/3)) + (2 * 720**2) + (2 * 960 * 240) + (3 * 720 * 2048)
-act_w_size = 16 * act_layer_w * DTYPE_SIZE
+
+# Action Expert: 16 layers interleaved.
+# Based on model_shape.txt analysis:
+# Layers 0, 2, ... 14 (8 Layers): "Self Attention"
+#   Q: 960x720, K: 320x720, V: 320x720, O: 720x960. MLP: 3*720*2048.
+# Layers 1, 3, ... 15 (8 Layers): "Cross Attention" (implied via 320-dim input K/V)
+#   Q: 960x720, K: 320x320, V: 320x320, O: 720x960. MLP: 3*720*2048.
+
+# Even Layer (SA) Params:
+act_sa_layer = (960*720) + (320*720) + (320*720) + (720*960) + (3 * 720 * 2048)
+# Odd Layer (CA) Params:
+act_ca_layer = (960*720) + (320*320) + (320*320) + (720*960) + (3 * 720 * 2048)
+
+act_w_size = (8 * act_sa_layer + 8 * act_ca_layer) * DTYPE_SIZE
 
 total_weight_footprint = vis_w_size + vlm_w_size + act_w_size
 
@@ -137,13 +150,62 @@ act_act_peak = 2 * 50 * 720 * DTYPE_SIZE
 # Total = 2 * 113 * 240 * DTYPE_SIZE.
 ctx_kv_size = 2 * 113 * 240 * DTYPE_SIZE
 
-print(f"--- Memory Footprint (Storage) ---")
-print(f"Total Weights (HBM):    {total_weight_footprint/1e6:.2f} MB")
-print(f"  - Vision: {vis_w_size/1e6:.2f} MB")
-print(f"  - VLM:    {vlm_w_size/1e6:.2f} MB")
-print(f"  - Action: {act_w_size/1e6:.2f} MB")
+# 4. Detailed Footprint (Matching model_shape.txt)
+
+# --- Parameters from model_shape.txt ---
+VOCAB_SIZE = 49280
+VLM_DIM = 960
+VIS_DIM = 768
+CONNECTOR_DIM = 12288 # 960x12288
+
+# A. Vision Encoder Params
+# Patch Embed: 768 * 3 * 16 * 16
+vis_patch_embed = 768 * 3 * 16 * 16
+# Pos Embed: 1024 * 768
+vis_pos_embed = 1024 * 768
+# Layers (12x): Norms (4*768) + Attn (4*768^2 + 4*768 bias) + MLP (2*3072*768 + 2*3072 bias + ... bias?)
+# Let's trust my vis_w_size calc for weights, but add biases/norms.
+# Bias approx: 12 * (4*768 + 2*3072 + 4*768) ~ small.
+vis_total_params = vis_w_size + vis_patch_embed + vis_pos_embed
+
+# B. VLM Backbone Params
+# Embed Tokens: 49280 * 960
+vlm_embed = VOCAB_SIZE * VLM_DIM
+# Layers (16x): Already in vlm_w_size (Weights). Add biases/norms.
+# Norms: 2 per layer * 960.
+vlm_extra = 16 * (2 * 960)
+vlm_total_params = vlm_w_size + vlm_embed + vlm_extra
+
+# C. Action Expert Params
+# Layers (16x): Already in act_w_size.
+act_total_params = act_w_size
+
+# D. Connector & Heads
+# Connector: 960 * 12288
+connector_params = 960 * 12288
+# LM Head: 49280 * 960
+lm_head_params = VOCAB_SIZE * VLM_DIM
+
+# --- Total Sum ---
+# Note: calc_*_mem returned Op *Bytes*. We need Op *Count* first.
+# My previous *_w_size vars were (Count * DTYPE).
+# Let's revert to counts by dividing by DTYPE (1).
+total_params_count = (vis_total_params + vlm_total_params + act_total_params) + connector_params + lm_head_params
+
+bf16_size_mb = (total_params_count * 2) / 1e6
+int8_size_mb = (total_params_count * 1) / 1e6
+
+print(f"--- Comprehensive Memory Footprint ---")
+print(f"1. Vision Encoder:   {vis_total_params/1e6:.2f} M Params")
+print(f"2. VLM Backbone:     {vlm_total_params/1e6:.2f} M Params (incl. Embed)")
+print(f"3. Action Expert:    {act_total_params/1e6:.2f} M Params")
+print(f"4. Connector:        {connector_params/1e6:.2f} M Params")
+print(f"5. LM Head:          {lm_head_params/1e6:.2f} M Params")
+print(f"-" * 30)
+print(f"Total Params:        {total_params_count/1e6:.2f} M")
+print(f"Original Size (BF16): {bf16_size_mb:.2f} MB (~0.93 GB)")
+print(f"Accelerated Size (INT8): {int8_size_mb:.2f} MB")
+print(f"-" * 30)
 print(f"Peak Activation (On-Chip): {max(vis_act_peak, vlm_act_peak, act_act_peak)/1e6:.2f} MB")
-print(f"  - Vision Peak: {vis_act_peak/1e6:.2f} MB")
-print(f"  - VLM Peak:    {vlm_act_peak/1e6:.2f} MB")
 print(f"Action Context KV Cache:   {ctx_kv_size/1e3:.2f} KB")
 
