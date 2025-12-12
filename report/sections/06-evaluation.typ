@@ -23,25 +23,7 @@
   - Explain which optimization yielded the biggest gain.
 ]
 
-#figure(
-  caption: [Ablation of Attention Kernels],
-  styled-table(
-    columns: 4,
-    table.header([Kernel], [Speed (ms)], [BRAM %], [DSP %]),
-    [Baseline],
-    [TODO],
-    [TODO],
-    [TODO],
-    [Tiled],
-    [TODO],
-    [TODO],
-    [TODO],
-    [Systolic],
-    [TODO],
-    [TODO],
-    [TODO],
-  ),
-) <tab:attention-ablation>
+#include "../figures/evaluation/attention-ablation.typ"
 
 /**********************************************************/
 
@@ -59,7 +41,7 @@ When evaluating the MLP, we estimate the performance of the latency based on the
 
 === Ablation
 
-#todo(Stanley , done: 0%)[
+#todo(Stanley, done: 0%)[
   *MLP Ablation*:
   - Show progression of optimizations for MLP.
 ]
@@ -70,6 +52,7 @@ To address this, we implemented tiling, exploiting temporal reuse and dataflow c
 
 The main contributors to the latency for the MLP are the two fully connected layers, FC1 and FC2, as they account for the majority of the MAC operations. It can be noted that latency will scale approximately linearly with batch size regardless of these optimizations, and that batch size does not have a direct impact on resource utilization.
 
+<<<<<<< Updated upstream
 #figure(
   caption: [Ablation of MLP Kernels],
   styled-table(
@@ -95,3 +78,6 @@ The main contributors to the latency for the MLP are the two fully connected lay
     [59 (0.65%)],
   ),
 ) <tab:mlp-ablation>
+=======
+#include "../figures/evaluation/mlp-ablation.typ"
+>>>>>>> Stashed changes

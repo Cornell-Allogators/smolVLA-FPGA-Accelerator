@@ -1,0 +1,23 @@
+#figure(
+  caption: [Computational Demand Breakdown by Model Component],
+  styled-table(
+    columns: 4,
+    table.header([*Component*], [*MACs (G)*], [*OPs (G)*], [*% of Total*]),
+    [Vision Encoder],
+    [106.30],
+    [212.60],
+    [58.4%],
+    [VLM Backbone],
+    [18.17],
+    [36.34],
+    [10.0%],
+    [Action Expert],
+    [57.45],
+    [114.90],
+    [31.6%],
+    [*Total*],
+    [*181.92*],
+    [*363.84*],
+    [*100%*],
+  ),
+) <tab:compute-constraint>

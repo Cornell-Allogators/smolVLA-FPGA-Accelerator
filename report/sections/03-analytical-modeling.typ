@@ -44,90 +44,12 @@ Since our FPGA implementation utilizes `int8` quantization to maximize throughpu
 
 The computational Demands are summarized by the expected MACs per token for a single Transformer layer. We distinguish between the Standard Multi-Head Attention (MHA) used in the Vision Encoder, and the Grouped Query Attention (GQA) used in the VLM Backbone and Action Expert.
 
-#figure(
-  caption: [Definitions for the dimensions used in our analysis],
-  styled-table(
-    columns: (auto, auto),
-    inset: 10pt,
-    align: horizon,
-    table.header([*Symbol*], [*Definition*]),
-    [$L$], [Sequence Length \ (Number of tokens)],
-    [$D$], [Hidden Dimension],
-    [$D_h$], [Head Dimension ($D / "Heads"$)],
-    [$H_q$], [Number of Query Heads],
-    [$H_("kv")$], [Number of Key/Value Heads],
-    [$E$], [MLP Expansion\ Factor (typically 4)]
-  )
-)
+#include "../figures/analytical-modeling/dimensions.typ"
 
 
-#figure(
-  caption: [Expected MACs for Standard Transformer Layer (MHA)],
-  styled-table(
-    columns: (auto, auto, auto),
-    inset: 10pt,
-    align: horizon,
-    table.header([*Operation*], [*MACs Formula*], [*Notes*]),
-    [Q Projection],
-    [$L dot D^2$],
-    [$D times D$ weights],
-    [K Projection],
-    [$L dot D^2$],
-    [$D times D$ weights],
-    [V Projection],
-    [$L dot D^2$],
-    [$D times D$ weights],
-    [Attn Scores],
-    [$L^2 dot D$],
-    [$Q K^T$ (per head sum is $D_h$)],
-    [Attn Update],
-    [$L^2 dot D$],
-    [$A V$ (per head sum is $D_h$)],
-    [Output Proj],
-    [$L dot D^2$],
-    [$D times D$ weights],
-    [MLP FFN],
-    [$2 dot E dot L dot D^2$],
-    [Typically $8 L D^2$ ($E=4$)],
-    [*Total*],
-    [$approx 12 L D^2 + 2 L^2 D$],
-    [Dominated by linear layers],
-  ),
-) <tab:macs-standard>
+#include "../figures/analytical-modeling/macs-standard.typ"
 
-#figure(
-  caption: [Expected MACs for Grouped Query Attention Layer (GQA)],
-  styled-table(
-    columns: (auto, auto, auto),
-    inset: 10pt,
-    align: horizon,
-    table.header([*Operation*], [*MACs Formula*], [*Notes*]),
-    [Q Projection],
-    [$L dot D^2$],
-    [Full Query Heads],
-    [K Projection],
-    [$L dot D^2 dot (H_("kv")/H_q)$],
-    [Reduced Heads],
-    [V Projection],
-    [$L dot D^2 dot (H_("kv")/H_q)$],
-    [Reduced Heads],
-    [Attn Scores],
-    [$L^2 dot D$],
-    [Broadcast K to matching Qs],
-    [Attn Update],
-    [$L^2 dot D$],
-    [Broadcast V to matching Qs],
-    [Output Proj],
-    [$L dot D^2$],
-    [Full Output],
-    [MLP FFN],
-    [$2 dot E dot L dot D^2$],
-    [Standard MLP],
-    [*Total*],
-    [$approx L D^2 (10 + 2 H_("kv")/H_q) + 2 L^2 D$],
-    [Savings in K/V Proj],
-  ),
-) <tab:macs-gqa>
+#include "../figures/analytical-modeling/macs-gqa.typ"
 
 *Methodology and Assumptions*:
 The following parameters and assumptions are used for the MACs calculation:
@@ -145,29 +67,7 @@ Based on the parameters derived from the codebase and the specific configuration
 
 Crucially, for the *Action Expert*, we utilize a static optimization for the Cross-Attention layers: the Key and Value matrices for the VLM context are computed *once* per inference, as the context remains static across the 10 diffusion steps. Only the Query projections and the attention scores/updates are computed dynamically at each step.
 
-#figure(
-  caption: [Computational Demand Table],
-  styled-table(
-    columns: 4,
-    table.header([*Component*], [*MACs (G)*], [*OPs (G)*], [*% of Total*]),
-    [Vision Encoder],
-    [106.30],
-    [212.60],
-    [58.4%],
-    [VLM Backbone],
-    [18.17],
-    [36.34],
-    [10.0%],
-    [Action Expert],
-    [57.45],
-    [114.90],
-    [31.6%],
-    [*Total*],
-    [*181.92*],
-    [*363.84*],
-    [*100%*],
-  ),
-) <tab:compute-constraint>
+#include "../figures/analytical-modeling/compute-constraint.typ"
 
 == Resource Constraints
 === Compute Resource Constraints
@@ -197,34 +97,7 @@ Another technique we use is mapping our MAC operations to DSP slices, which are 
 
 We analyze the storage requirements to determine where data must reside. The original model weights in `bfloat16` precision occupy approx. 897 MB. By quantizing to `int8`, we reduce the total model footprint to *448 MB*. This still exceeds the U280's on-chip capacity (~40-50 MB), mandating off-chip HBM storage.
 
-#figure(
-  caption: [Memory Footprint Requirements (Storage)],
-  styled-table(
-    columns: 3,
-    table.header([*Metric*], [*Size (INT8)*], [*Placement*]),
-    [Vision Encoder],
-    [86.31 MB],
-    [Off-Chip (HBM)],
-    [VLM Backbone],
-    [204.63 MB],
-    [Off-Chip (HBM)],
-    [Action Expert],
-    [98.22 MB],
-    [Off-Chip (HBM)],
-    [Embeddings/Heads],
-    [59.11 MB],
-    [Off-Chip (HBM)],
-    [*Total Weights*],
-    [*448.27 MB*],
-    [*Off-Chip (HBM)*],
-    [Peak Activations],
-    [1.57 MB],
-    [On-Chip (BRAM/URAM)],
-    [Action Context Cache],
-    [54.24 KB],
-    [On-Chip],
-  ),
-) <tab:mem-footprint>
+#include "../figures/analytical-modeling/mem-footprint.typ"
 
 === Memory Port Constraints
 
@@ -240,25 +113,7 @@ We analyze the storage requirements to determine where data must reside. The ori
 
 Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the large model size (approx. 180MB for weights), we assume a *layer-by-layer* execution model where weights must be streamed from HBM for each layer. For the Vision and VLM components, this means reading weights once per inference. However, for the *Action Expert*, the 10-step diffusion process requires re-streaming the dynamic weights 10 times, leading to a massive memory bandwidth demand.
 
-#figure(
-  caption: [Minimum Off-Chip Memory Transfer Per Inference (INT8)],
-  styled-table(
-    columns: 3,
-    table.header([*Component*], [*Transfer (MB)*], [*Notes*]),
-    [Vision Encoder],
-    [103.81],
-    [Weights (1x) + I/O],
-    [VLM Backbone],
-    [160.76],
-    [Weights (1x) + I/O],
-    [Action Expert],
-    [1113.75],
-    [Weights (10x) + I/O (10x)],
-    [*Total*],
-    [*1378.32*],
-    [Dominated by Action Loop],
-  ),
-) <tab:mem-transfer>
+#include "../figures/analytical-modeling/mem-transfer.typ"
 
 *Analysis*: The Action Expert accounts for over 80% of the total off-chip data transfer. With a realistic HBM bandwidth of ~300 GB/s, the memory transfer alone sets a hard lower bound on latency of approx. 4.6 ms ($1378 " MB" / 300 " GB/s"$), not accounting for compute or latency hiding.
 
