@@ -121,20 +121,28 @@ The Action Expert generates the control sequence using a conditional diffusion p
   ) <tab:macs-gqa>
 
 
-  
+
 #figure(
   caption: [Computational Demand Table],
   styled-table(
     columns: 4,
-    table.header([Kernel], [FLOPs/Op], [Total FLOPs], [% of Total]),
-    [Attention],
-    [TODO],
-    [TODO],
-    [TODO],
-    [MLP],
-    [TODO],
-    [TODO],
-    [TODO],
+    table.header([*Component*], [*MACs (G)*], [*FLOPs (G)*], [*% of Total*]),
+    [Vision Encoder],
+    [106.30],
+    [212.60],
+    [58.4%],
+    [VLM Backbone],
+    [18.17],
+    [36.34],
+    [10.0%],
+    [Action Expert],
+    [57.45],
+    [114.90],
+    [31.6%],
+    [*Total*],
+    [*181.92*],
+    [*363.84*],
+    [*100%*],
   ),
 ) <tab:compute-constraint>
 
@@ -154,7 +162,7 @@ Fundamentally, most operations in SmolVLA can be reduced to matrix operations. T
 
 One way to reduce this overhead is to use lower-precision datatypes. The default floating-point format is FP32, which uses a whopping 4 bytes per value. By quantizing the model to FP16, bfloat16, FP8, or even FP4, we can significantly reduce memory usage while maintaining acceptable precision. Another approach is to convert the relatively complex FP32 values into integers. Integer ALUs require far fewer hardware resources than their floating-point counterparts, which makes them an appealing option for acceleration.
 
-Another technique we use is mapping our MAC operations to DSP slices, which are hardened blocks on the FPGA designed to perform multiply and accumulate operations every cycle when pipelined. This saves valuable hardware resources and allows larger, more complex designs. On the AMD Alveo U280, there are 9,024 DSP slices, which means we can process at least 9,024 MAC operations per clock cycle with full utilization. However, we can use instantiate "soft" FPUs/ALUs on the LUT fabric, or we can use bit packing tricks to do up to 4 int4 MACs per clock cycle per DSP. 
+Another technique we use is mapping our MAC operations to DSP slices, which are hardened blocks on the FPGA designed to perform multiply and accumulate operations every cycle when pipelined. This saves valuable hardware resources and allows larger, more complex designs. On the AMD Alveo U280, there are 9,024 DSP slices, which means we can process at least 9,024 MAC operations per clock cycle with full utilization. However, we can use instantiate "soft" FPUs/ALUs on the LUT fabric, or we can use bit packing tricks to do up to 4 int4 MACs per clock cycle per DSP.
 
 === Memory Capacity Constraints
 
