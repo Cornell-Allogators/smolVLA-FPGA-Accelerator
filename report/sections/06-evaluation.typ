@@ -11,7 +11,7 @@
 #todo(Ezra, done: 0%)[
   *Attention Metrics*:
   - Report exact latency (cycles/ms) for the Self-Attention kernel.
-  - Report resource usage (DSP, BRAM, LUT, FF) from Vivado reports.
+  - Report resource usage (DSP, BRAM, LOOT, FF) from Vivado reports.
   - Compare against the analytical model predictions.
 ]
 
@@ -55,7 +55,7 @@
 
 === Ablation
 
-#todo(Ezra, done: 0%)[
+#todo(Stanley, done: 0%)[
   *MLP Ablation*:
   - Show progression of optimizations for MLP.
 ]

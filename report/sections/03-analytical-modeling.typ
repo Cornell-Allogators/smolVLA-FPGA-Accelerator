@@ -15,7 +15,7 @@
 == Computational Demands
 
 *Compute Analysis*:
-The computational workload of SmolVLA is distributed across three distinct sub-models, each with specific dimensions and token processing requirements. We break down the parameters for each to establish the baseline for our FLOPs calculations.
+The computational workload of SmolVLA is distributed across three distinct sub-models, each with specific dimensions and token processing requirements. We break down the parameters for each to establish the baseline for our MACs calculations.
 
 *1. Vision Encoder (ViT)*
 The Vision Encoder is responsible for processing the raw camera inputs.
@@ -149,7 +149,9 @@ The Action Expert generates the control sequence using a conditional diffusion p
   - Explain how data types (int8 vs fp32) affect this.
 ]
 
-Fundamentally, most of the operations in SmolVLA can be broken down to matrix operations.These operations can then further broken down into multiply and addition operations, commonly called multiply accumulated operations, also know as MACs. The naive approach is to implement all of these operations to the fabric of the FPGA or synthesizing all of the operations to LUTs and Flip Flops. However, this can be quite inefficient, as expressing floating point operations can requires thousands of LUTs and flip flops. One way to help solve
+Fundamentally, most of the operations in SmolVLA can be broken down to matrix operations.These operations can then further broken down into multiply and addition operations, commonly called multiply accumulated operations, also know as MACs. The naive approach is to implement all of these operations to the fabric of the FPGA or synthesizing all of the operations to LUTs and Flip Flops. However, this can be quite inefficient, as expressing floating point operations can requires thousands of LUTs and flip flops. One way to help solve this issues is lower precision datatypes. The default floating point data type is FP32, taking a whoping 4 bytes pre value. We can use quantize our model to us FP16 or Bfloat16, FP8, or even FP4 to save memory while not losing too much precision. Another manner is convert our relatively complex floating point FP32 values into integers. This integers ALUs take up less resources than their floating point counterparts, making them a potentially interesting avenue to export. H
+
+Another approach we will use is making our MAC operations to DSP, hardened blocks on the FPGA that can multiple and accumulate every cycle, assuming a pipeline. This allows us to save on precious hardware resources, allowing us to create larger designs on an FPGA. On the AMD Alveo U280, we have 9024 of these DSP slices, allowing up to create larger desinigng .
 
 === Memory Capacity Constraints
 

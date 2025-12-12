@@ -4,7 +4,7 @@
 
 = Conclusion
 
-#todo(Ezra, done: 0%)[
+#todo(Sam, done: 0%)[
   *Final Remarks*:
   - Summarize key findings: "Allo enables rapid prototyping of VLA accelerators..."
   - Reiterate the main performance numbers (speedup vs baseline).
