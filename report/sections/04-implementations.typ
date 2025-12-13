@@ -29,7 +29,6 @@
 
 #include "../figures/per-head-loop/per-head-loop.typ"
 
-
 #include "../figures/per-head-loop-with-ii/per-head-loop-with-ii.typ"
 
 /**********************************************************/

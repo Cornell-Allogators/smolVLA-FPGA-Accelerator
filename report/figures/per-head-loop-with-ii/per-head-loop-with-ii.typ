@@ -5,6 +5,6 @@
   ],
   image(
     "per-head-loop-with-ii.svg",
-    width: 60%
+    width: 30%
   )
 ) <fig:per-head-loop-with-ii>

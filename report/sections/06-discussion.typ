@@ -20,7 +20,7 @@
 
 == Performance of MLP
 
-#todo(Stanley, done: 75%)[
+#todo(Stanley, done: 99%)[
   *MLP Insights*:
   - Discuss the specific challenges of the MLP layers (large weight matrices).
   - Resource trade-offs found during implementation.

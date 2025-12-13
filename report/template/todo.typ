@@ -1,13 +1,11 @@
 #import "@preview/drafting:0.2.0": *
 
-#let hide_todo = false
-
 #let todo(
   who,
   body,
   done: 0%,
 ) = {
-  if not hide_todo {
+  if done < 100% {
     set align(center)
     rect(
       fill: color.mix(
@@ -18,21 +16,13 @@
       radius: 8pt,
       stroke: 1pt,
       width: 80%,
-      if done >= 100% {
-        align(left)[
-          #text(size: 14pt)[
-            *Written By: *#who #h(1fr) *(DONE)*
-          ]
+      align(left)[
+        #text(size: 14pt)[
+          *TODO: *#who  #h(1fr) *(#done)*
+        ] \ #text[
+          #body
         ]
-      } else {
-        align(left)[
-          #text(size: 14pt)[
-            *TODO: *#who  #h(1fr) *(#done)*
-          ] \ #text[
-            #body
-          ]
-        ]
-      },
+      ]
     )
   }
 }
