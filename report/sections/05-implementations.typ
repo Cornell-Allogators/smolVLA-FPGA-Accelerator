@@ -50,18 +50,22 @@ We compute the linear layer by multiplying input tensors with weight tensors and
 #include "../figures/mlp-layer-math/mlp-layers-math.typ"
 
 
-$ "GELU"(x) = x * ( 1/2 + 1/2 "erf"(sqrt(1/2)x)) $
+=== GELU
+
+$ "GELU"(x) = x dot ( 1/2 + 1/2 "erf"(sqrt(1/2)x)) $
 
 Another optimization target is the GELU calculation. The standard GELU formula involves the Error Function (erf), which requires computing an integral—an operation ill-suited for FPGA hardware.
-As a result, we approximate GELU using a hyperbolic tangent. ($tanh$) formulation: $ "GELU"_approx(x) = frac(1, 2) * x * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3))) $ We express the $tanh$ function using a polynomial approximation based on Cody and Waite's rational form. This approach requires only 4 floating-point multiplications (fmul), 3 additions (fadd), and 1 division (fdiv) in single precision. Combined with the non-$tanh$ operations (2 fadd, 6 fmul, 1 fdiv), the entire GELU calculation requires just 16 operations.
+As a result, we approximate GELU using a hyperbolic tangent. ($tanh$) formulation: $ "GELU"(x) approx frac(1, 2) dot x dot (1 + tanh(sqrt(2/pi) * (x + 0.044715 dot x^3))) $ We express the $tanh$ function using a polynomial approximation based on Cody and Waite's rational form. This rach equrapproximates only apprxomiationWe also eedoff chip4 floating-point multiplications (fmul), 3 additions (fadd), and 1 division (fdiv) in single precision. Combined with the non-$tanh$ operations (2 fadd, 6 fmul, 1 fdiv), the entire GELU calculation requires just 16 operations.
 
 Simpler approximations exist, such as the sigmoid approximation. $ "GELU"(x) approx x * sigma(1.702 * x) $However, we did not employ them as the MLP runtime is dominated by matrix multiplication. We did, however, experiment with replacing GELU with ReLU to isolate and test the matrix multiplications without activation function bottlenecks.
 
+=== Systolic Arrays
 #include "../figures/systolic-array/systolic-array.typ"
 
 For the matrix multiplications, the standard way to execute these are by unrolling and pipelining the triple nested loop. We will also experiment with a systolic array based implementation. With this approach, data is injected into the edge processing elements, and then only moves between processing elements. This reduces the amount of data movement needed between the memory/buffers, helping increasing utilization of all of the DSPs on the FPGA.
 
 #include "../figures/mlp-packed/mlp-packed.typ"
 
+=== Packing
 We also implemented weight and tensor packing. Since our weights and activations are 8-bit integers (`int8`), we can pack up to four values into a single 32-bit word. This optimization is crucial for BRAM data transfers, which typically operate on 32-bit words. Without packing, non-consecutive memory accesses could require up to four separate read cycles. Packing guarantees that we can move four weights per cycle. This creates a path for future optimizations using AXI for off-chip HBM transfers, where reducing the number of data beats per transaction alleviates memory bandwidth constraints.
 

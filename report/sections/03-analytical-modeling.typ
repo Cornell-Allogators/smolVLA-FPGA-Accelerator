@@ -98,7 +98,7 @@ Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the
 
 == Performance Estimation
 
-To evaluate the feasibility of our design on the Alveo U280, we first calculate the Operational Intensity (OI) for each major component. As summarized in @tab:oi-analysis, the Vision Encoder, VLM Backbone, and Action Expert all exhibit high operational intensities.
+\To evaluate the feasibility of our design on the Alveo U280, we first calculate the Operational Intensity (OI) for each major component. As summarized in @tab:oi-analysis, the Vision Encoder, VLM Backbone, and Action Expert all exhibit high operational intensities.
 
 #include "../figures/analytical-modeling/oi-analysis.typ"
 
