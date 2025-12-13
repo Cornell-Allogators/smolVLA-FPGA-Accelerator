@@ -41,23 +41,21 @@
   FILL IN THE ERF FORMULA
 ]
 
-The MLP pipeline is implemented as follows. First, a fully connected(FFN) layer, which then feeds into a Gaussian Error Linear Unit (GELU), a non linear activation function. The GELU activation function is chosen over other common activations largely because it is smooth/differentiable everywhere, which improves stability and helps preserve information given the small model size. Then, it is fed into another fully connected layer, before being passed into the layer norm. 
+The MLP pipeline comprises a fully connected (FFN) layer followed by a Gaussian Error Linear Unit (GELU) non-linear activation function. We selected GELU over other common activation functions primarily for its smoothness and differentiability, which improve stability and information preservation in smaller models. The output is then passed to a second fully connected layer before entering the layer normalization stage.
 
 #include "../figures/mlp-layers/mlp-layers.typ"
 
-We can compute the linear layer by multiplying the input tensors with the weight tensors, then performing an addition with the bias vectors. However, what makes this challenging is the large shapes of the tensors we are multiplying. Of the 9.6 Billion MACs used in the MLP, 99.6% are split across the two matrix multiplications, while the ~8B MACs used int the self attention are primarily distributed among 72 smaller matrix multiplications(12 heads x 6 multiplications per head).
+We compute the linear layer by multiplying input tensors with weight tensors and adding bias vectors. The primary challenge lies in the size of these tensors. Of the 9.6 billion MACs in the MLP, 99.6% are attributed to these two large matrix multiplications. In contrast, the ~8 billion MACs in the Self-Attention mechanism are distributed across 72 smaller matrix multiplications (12 heads $times$ 6 multiplications per head).
 
 #include "../figures/mlp-layer-math/mlp-layers-math.typ"
 
 
 $ "GELU"(x) = x * ( 1/2 + 1/2 "erf"(sqrt(1/2)x)) $
 
-Another aspect we can optimize is the calculation of GELU. True GELU is typically calculated with this formula, which contains an ERF. This however, has to be calculated with an integral, something that can not be done easily on an FPGA. 
+Another optimization target is the GELU calculation. The standard GELU formula involves the Error Function (erf), which requires computing an integral—an operation ill-suited for FPGA hardware.
+As a result, we approximate GELU using a hyperbolic tangent. ($tanh$) formulation: $ "GELU"_approx(x) = frac(1, 2) * x * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3))) $ We express the $tanh$ function using a polynomial approximation based on Cody and Waite's rational form. This approach requires only 4 floating-point multiplications (fmul), 3 additions (fadd), and 1 division (fdiv) in single precision. Combined with the non-$tanh$ operations (2 fadd, 6 fmul, 1 fdiv), the entire GELU calculation requires just 16 operations.
 
-
-As a result, for this paper, we express GELU with a hyperbolic tanh $ "GELU"_approx(x) = frac(1, 2) * x * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3))) $ We can express the tanh through a polynomial approximation.  Assuming a  Cody and Waite’s rational form to apporximate tanh, commonly used in IR apprxomiation of tan, we only requires 4 fmuls, 3 fadds, and 1 fdiv in single precision. Of the non tanh operation, we have 2 fadd,  6 fmul, and 1 fdiv resulting in 16 operations total to calculate the GELU.
-
-There are more simple approximation, such as a sigmoid approximation $ "GELU"(x) ≈ x * sigma(1.702 * x) $, however, we do not use them in this paper as the MLP ops are already far dominated by the matrix multiplication. We however, did experiment with replacing the GELU with a RELU activation function. This helped us experiment with the matrix multiplications without running into risks of any potential bottlenecks in the activation function. 
+Simpler approximations exist, such as the sigmoid approximation. $ "GELU"(x) approx x * sigma(1.702 * x) $However, we did not employ them as the MLP runtime is dominated by matrix multiplication. We did, however, experiment with replacing GELU with ReLU to isolate and test the matrix multiplications without activation function bottlenecks.
 
 #include "../figures/systolic-array/systolic-array.typ"
 
@@ -65,5 +63,5 @@ For the matrix multiplications, the standard way to execute these are by unrolli
 
 #include "../figures/mlp-packed/mlp-packed.typ"
 
-We also experiment with packing our weights and tensors. Our weights and activations are int8, so we can pack up to four values per 32 bit beat. This helps transfers to and from BRAM, which normally transfer 32 bit words. Normally, worst case, if the weights were not consecutive in memory, it would require up to four memory reads. However, by packing, we guarantee that we can move 4 weights per cycle. In the future, this would also help with transfer from offchip HBM over AXI. AXI also would requires less data beats for each transaction, helping alleviate potential memory bandwidth issues. 
+We also implemented weight and tensor packing. Since our weights and activations are 8-bit integers (`int8`), we can pack up to four values into a single 32-bit word. This optimization is crucial for BRAM data transfers, which typically operate on 32-bit words. Without packing, non-consecutive memory accesses could require up to four separate read cycles. Packing guarantees that we can move four weights per cycle. This creates a path for future optimizations using AXI for off-chip HBM transfers, where reducing the number of data beats per transaction alleviates memory bandwidth constraints.
 

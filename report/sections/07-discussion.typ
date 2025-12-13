@@ -27,7 +27,7 @@
 ]
 
 
-Several architectural optimizations were explored for the MLP. Our baseline design did not utilize tiling or any optimization techniques. This version had an extremely high latency, as there was no pipeline, resulting in all operations being conducted serially. As a result, we implemented synthesis for varying dimensions of the systolic array s the dimensions of the systolic array increase, latency decreases due to higher parallelism the matrix multiplication. Our systolic array dimension's aspect ratio are different to allow for the most utilization. However, Allo's systolic array implementation is quite new, and is inefficient. Each processing element 
+Several architectural optimizations were explored for the MLP. Our baseline design did not utilize tiling or any optimization techniques. This version had an extremely high latency, as there was no pipelining, resulting in serial execution of all operations. Consequently, we synthesized varying dimensions of the systolic array. As the dimensions of the systolic array increase, latency decreases due to higher parallelism in the matrix multiplication. We varied the aspect ratios of our systolic array dimensions to maximize utilization. However, Allo's current systolic array implementation proved inefficient.
 
 To address this, we implemented tiling, exploiting temporal reuse and dataflow control. The MLP computation is partitioned into tiles, allowing the same hardware to be reused across multiple tiles over time. This dramatically reduced resource utilization and allowed for synthesis of a feasible design with significantly reduced latency. The synthesis results for estimated latency and resource utilization are shown in Figure 9.
 

@@ -8,7 +8,7 @@
     align: horizon,
     table.header([*Symbol*], [*Definition*]),
     [$L$],
-    [Sequence Length \ (Number of tokens)],
+    [Sequence Length  (Number of tokens)],
     [$D$],
     [Hidden Dimension],
     [$D_h$],
@@ -18,6 +18,6 @@
     [$H_("kv")$],
     [Number of Key/Value Heads],
     [$E$],
-    [MLP Expansion\ Factor (typically 4)],
+    [MLP Expansion Factor (typically 4)],
   ),
 ) <tab:dimensions>
