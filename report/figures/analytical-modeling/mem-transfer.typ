@@ -12,10 +12,10 @@
     [160.76],
     [Weights (1x) + I/O],
     [Action Expert],
-    [1113.75],
+    [937.29],
     [Weights (10x) + I/O (10x)],
     [*Total*],
-    [*1378.32*],
+    [*1201.86*],
     [Dominated by Action Loop],
   ),
 ) <tab:mem-transfer>

@@ -34,10 +34,13 @@ The VLM fuses the visual embeddings with the text instructions.
 The Action Expert generates the control sequence using a conditional diffusion process (Flow Matching).
 - *Hidden Size*: 720 (0.75x of VLM width).
 - *Heads*: 12 Query Heads, 4 Key/Value Heads (Grouped Query Attention).
-- *Head Dimension*: 60.
+- *Head Dimension*: *80* (12 heads $times$ 80 = 960? No, query projects to 960).
 - *Sequence Length*: 50 Action Tokens (Prediction Horizon).
 - *Diffusion Steps*: 10 iterations per inference.
-- *Interaction*: The 50 Action Tokens attend to the 241 VLM Context Tokens (Cross-Attention).
+- *Architecture*: 16 Layers total, with *Interleaved Attention*:
+  - *Even Layers (0, 2, ...)*: Self-Attention (Standard GQA).
+  - *Odd Layers (1, 3, ...)*: Cross-Attention (Attends to VLM Context).
+- *Interaction*: The 50 Action Tokens attend to the 241 VLM Context Tokens via the odd-numbered Cross-Attention layers.
 
 *Compute Analysis*
 Since our FPGA implementation utilizes `int8` quantization to maximize throughput on DSP slices, we quantify computational complexity in terms of Multiply-Accumulate operations (MACs) rather than FLOPs. A single MAC corresponds to one multiplication and one addition (effectively 2 ops if counting FLOPs).
