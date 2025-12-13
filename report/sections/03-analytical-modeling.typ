@@ -12,56 +12,30 @@
 
 /**********************************************************/
 
+#include "../figures/analytical-modeling/dimensions.typ"
+
 == Computational Demands
 
-*Compute Analysis*:
-The computational workload of SmolVLA is distributed across three distinct sub-models, each with specific dimensions and token processing requirements. We break down the parameters for each to establish the baseline for our MACs calculations.
-
 *1. Vision Encoder (ViT)*
-The Vision Encoder is responsible for processing the raw camera inputs.
-- *Architecture*: Standard Vision Transformer (12 Layers).
-- *Hidden Size ($D$)*: 768.
-- *MLP Expansion*: 4x (Intermediate Dim = 3072).
-- *Heads*: 12.
-  - *Input Tokens*: 1024 patches per image. The Vision Encoder treats each $32 times 32$ patch (for a $512 times 512$ image) as a token.
+The Vision Encoder processes raw camera inputs using a standard 12-layer Vision Transformer architecture. This component handles 1024 patches per image, treating each $32 times 32$ patch (derived from a $512 times 512$ image) as a token. The model employs a hidden size ($D$) of 768, with 12 heads and an MLP expansion factor of 4x (resulting in an intermediate dimension of 3072).
 
 *2. VLM Backbone (Vision-Language Model)*
-The VLM fuses the visual embeddings with the text instructions.
-- *Hidden Size*: 960.
-- *Input Tokens*: 113 (for one camera) Total Tokens. This comprises 192 Visual Tokens, 48 Text Tokens (Instruction), and 1 Robot State Token.
+Fusing visual embeddings with text instructions, the VLM Backbone operates with a hidden size of 960. It processes a total of 113 tokens per camera—significantly fewer than the encoder—comprising 192 visual tokens, 48 text instruction tokens, and a single robot state token.
 
 *3. Action Expert*
-The Action Expert generates the control sequence using a conditional diffusion process (Flow Matching).
-- *Hidden Size*: 720 (0.75x of VLM width).
-- *Heads*: 12 Query Heads, 4 Key/Value Heads (Grouped Query Attention).
-- *Head Dimension*: *80* (12 heads $times$ 80 = 960? No, query projects to 960).
-- *Sequence Length*: 50 Action Tokens (Prediction Horizon).
-- *Diffusion Steps*: 10 iterations per inference.
-- *Architecture*: 16 Layers total, with *Interleaved Attention*:
-  - *Even Layers (0, 2, ...)*: Self-Attention (Standard GQA).
-  - *Odd Layers (1, 3, ...)*: Cross-Attention (Attends to VLM Context).
-- *Interaction*: The 50 Action Tokens attend to the 241 VLM Context Tokens via the odd-numbered Cross-Attention layers.
+The Action Expert generates control sequences via a conditional diffusion process (Flow Matching) over a prediction horizon of 50 action tokens. It executes 10 diffusion steps per inference using a 16-layer architecture that alternates between Self-Attention (even layers) and Cross-Attention (odd layers), where the latter attends to the VLM context. The model uses a hidden size of 720 (0.75x the VLM width) and employs Grouped Query Attention with 12 query heads and 4 key/value heads, each with a dimension of 80. The 50 Action Tokens interact with the 241 VLM Context Tokens through the odd-numbered Cross-Attention layers.
 
 *Compute Analysis*
 Since our FPGA implementation utilizes `int8` quantization to maximize throughput on DSP slices, we quantify computational complexity in terms of Multiply-Accumulate operations (MACs) rather than FLOPs. A single MAC corresponds to one multiplication and one addition (effectively 2 ops if counting FLOPs).
 
 The computational Demands are summarized by the expected MACs per token for a single Transformer layer. We distinguish between the Standard Multi-Head Attention (MHA) used in the Vision Encoder, and the Grouped Query Attention (GQA) used in the VLM Backbone and Action Expert.
 
-#include "../figures/analytical-modeling/dimensions.typ"
+#include "../figures/analytical-modeling/macs-gqa.typ"
 
 #include "../figures/analytical-modeling/macs-standard.typ"
 
-#include "../figures/analytical-modeling/macs-gqa.typ"
-
 *Methodology and Assumptions*:
-The following parameters and assumptions are used for the MACs calculation:
-- *Vision Encoder*: Input sequence length $L=1024$ (patches). Calculations are per-image.
-- *VLM Backbone*: Input sequence length $L=113$. This reflects a single-camera mode (64 visual tokens + 48 text tokens + 1 state token).
-- *Action Expert*:
-  - Sequence length $L=50$ (predicted action horizon).
-  - Diffusion steps: 10.
-  - *KV Reuse*: The Cross-Attention Key/Value projections for the VLM context are computed *once* per inference (Static), while Query projections and Attention scores are recomputed at each diffusion step.
-  - *Architecture*: Grouped Query Attention ($H_q=12, H_("kv")=4$) with head dimension $D_h=60$.
+Our MACs calculation assumes per-image processing for the Vision Encoder with an input sequence length of $L=1024$ patches. For the VLM Backbone, we assume a single-camera mode with a sequence length of $L=113$ (64 visual tokens + 48 text tokens + 1 state token). The Action Expert is modeled with a prediction horizon of $L=50$ and 10 diffusion steps. Notably, we assume efficient KV reuse: the Cross-Attention Key/Value projections for the VLM context are computed only once per inference, while Query projections and Attention scores are computed at each diffusion step. The architecture uses Grouped Query Attention ($H_q=12, H_("kv")=4$) with a head dimension of $D_h=60$.
 
 *Computational Demand Summary*
 
@@ -124,15 +98,16 @@ Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the
 
 == Performance Estimation
 
+\To evaluate the feasibility of our design on the Alveo U280, we first calculate the Operational Intensity (OI) for each major component. As summarized in @tab:oi-analysis, the Vision Encoder, VLM Backbone, and Action Expert all exhibit high operational intensities.
 
 #include "../figures/analytical-modeling/oi-analysis.typ"
+
+We visualize these characteristics against the hardware limits in the Roofline model shown in @fig:roofline.
 
 #include "../figures/roofline-analysis/roofline-analysis.typ"
 
 *Analysis*:
-The Roofline analysis reveals that all three components of SmolVLA sit well to the right of the U280's ridge point (~11.8 Ops/Byte). This indicates that the design is fundamentally *compute-bound*, limited by the DSP processing power rather than HBM bandwidth.
-- The *Vision Encoder* is extremely compute-bound (OI ~2048), suggesting that optimizing for DSP utilization (e.g., using systolic arrays) will yield direct performance gains.
-- The *Action Expert*, while still compute-bound (OI ~103), works significantly closer to the memory wall due to the 10x weight reloading required by the diffusion process. Any inefficiency in the memory controller could easily shift this component into a bandwidth-bound regime.
+The Roofline analysis reveals that all three components of SmolVLA sit well to the right of the U280's ridge point (~11.8 Ops/Byte). This indicates that the design is fundamentally *compute-bound*, limited by the DSP processing power rather than HBM bandwidth. The *Vision Encoder* is extremely compute-bound (OI ~2048), suggesting that optimizing for DSP utilization (e.g., using systolic arrays) will yield direct performance gains. Similarly, the *Action Expert*, while having a lower OI (~103) due to the requisite weight reloading for the diffusion process, remains in the compute-bound regime. However, it operates significantly closer to the memory wall; any inefficiency in the memory controller could easily shift this component into a bandwidth-bound regime.
 
 === Latency Estimation
 

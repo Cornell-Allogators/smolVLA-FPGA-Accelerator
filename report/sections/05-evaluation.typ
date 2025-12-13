@@ -35,13 +35,15 @@
   - Discuss impact of batch size (if applicable) or sequence length.
 ]
 
-When evaluating the MLP, we estimate the performance of the latency based on the number of cycles it takes to execute one query. We also estimated the resource utilization by using the Vitis report. We count the LUT, FF, DSP, and BRAM utilization to determine how much of the FPGA resources is being consumed by the MLP.
+To evaluate the MLP, we estimated latency by measuring the cycle count for a single query execution. Resource utilization was derived from Vitis synthesis reports. Specifically, we tracked Look-Up Table (LUT), Flip-Flop (FF), DSP slice, and Block RAM (BRAM) consumption to quantify the FPGA resource usage. The various implementations that were evaluated are further discussed in Section 7.2.
+
+It can be seen from the table (Figure 9) that the 1x1 kernels have much higher latency as well as lower resource usage, while the larger kernels have significantly lower latency, but much higher resource utilization (excluding BRAMs). This is a result 
 
 
 
 === Ablation
 
-#todo(Stanley, done: 90%)[
+#todo(Stanley, done: 100%)[
   *MLP Ablation*:
   - Show progression of optimizations for MLP.
 ]

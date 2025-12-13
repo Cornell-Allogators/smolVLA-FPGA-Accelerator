@@ -27,13 +27,9 @@ The VLM processes the visual observations (from up to 3 cameras) and the user's 
   - Discuss how it interacts with the VLM/LLM components.
 ]
 
-The Action Expert operates on a sequence of standard Transformer blocks but is optimized for the action generation domain. According to our configuration, the Action Expert operates with the following parameters:
-  - *Hidden Size*: 720
-  - *Heads*: 12 Query heads, 4 Key/Value heads (grouped-query attention)
-  - *Head Dimension*: 80
-  - *Expert Width Multiplier*: 0.75x relative to a standard VLM width.
+The Action Expert operates on a sequence of standard Transformer blocks but is optimized for the action generation domain. According to our configuration, the Action Expert operates with a hidden size of 720, 12 query heads, and 4 key/value heads (using grouped-query attention). The head dimension is set to 80, and the expert width is scaled to 0.75x relative to a standard VLM width.
 
-The core workload consists of Cross-Attention layers, where the query tokens (representing the robot's action plan) attend to the context provided by the VLM embeddings, followed by MLP layers for feed-forward processing. The model uses a flow-matching solver with 10 steps to refine the action trajectory.
+The computational core consists of Cross-Attention layers, where query tokens (representing the robot's action plan) attend to the context provided by VLM embeddings, followed by MLP layers for feed-forward processing. The model uses a 10-step flow-matching solver to refine the action trajectory.
 
 
 === Large Language Model
@@ -45,7 +41,7 @@ The core workload consists of Cross-Attention layers, where the query tokens (re
   - Discuss tokenization and embedding generation.
 ]
 
-The VLM component of SmolVLA handles the semantic understanding of the scene. It tokenizes the input text and visual patches (64 tokens per frame) into a unified embedding space. The LLM component of the VLM contains the largest parameter count of the entire model.
+The VLM component of SmolVLA handles semantic scene understanding. It tokenizes input text and visual patches (64 tokens per frame) into a unified embedding space. The Language Model backbone within the VLM accounts for the largest parameter count in the entire architecture.
 
 
 === Vision Transformer Model
@@ -56,7 +52,7 @@ The VLM component of SmolVLA handles the semantic understanding of the scene. It
   - Mention specific parameters from `hardware_build/attention/config.py` (e.g., hidden size, number of heads).
 ]
 
-The Vision Encoder is the primary focus of this acceleration effort. The visual front-end typically employs a Vision Transformer (ViT) to extract features from the camera inputs. These features are projected into the same embedding dimension as the text tokens, allowing the VLM to perform cross-modal reasoning.
+The Vision Encoder is the primary focus of this acceleration effort. The visual front-end employs a Vision Transformer (ViT) to extract features from the camera inputs. These features are projected into the same embedding dimension as the text tokens, allowing the VLM to perform cross-modal reasoning.
 
 /**********************************************************/
 
@@ -69,12 +65,9 @@ The Vision Encoder is the primary focus of this acceleration effort. The visual 
   - Explain how customization/composition works.
 ]
 
-Allo is an accelerator design language that aims to simplify the process of designing accelerators on FPGAs. Developed by the Zhang Research Group at Cornell University, Allo seeks to decouple the functional aspects and computational semantics of a kernel from the hardware details and optimization code. In normal HLS programs, if a user wants to optimize a kernel, they are required to make intrusive source edits to achieve a performance improvement. Instead, Allo separates the functionality of a kernel from the scheduling, allowing users to apply HLS optimizations without modifying the compute kernel itself.
+Allo is an accelerator design language that aims to simplify the process of designing accelerators on FPGAs. Developed by the Zhang Research Group at Cornell University, Allo decouples the functional aspects of a kernel from the hardware details and optimization code. In traditional HLS workflows, optimizing a kernel requires intrusive source edits to achieve performance improvements. Instead, Allo separates the functionality of a kernel from its schedule, allowing users to apply HLS optimizations without modifying the compute kernel itself.
 
-Key features of Allo used in this project include:
-- *Composable Transformations*: We apply optimizations like `.tile()`, `.pipeline()`, and `.partition()` as a separate pass over the kernel.
-- *Python-based DSL*: Kernels are written in a Python subset, making them easy to test and integrate with PyTorch-based implementations of SmolVLA.
-- *Type System*: Allo supports reduced precision data types (e.g., `int8`, `fixed<16, 8>`) which are crucial for maximizing the throughput of matrix multiplications on the U280's DSP slices.
+A key feature of Allo utilized in this project is *Composable Transformations*, which allows us to apply optimizations like `.tile()`, `.pipeline()`, and `.partition()` as separate passes over the kernel. Additionally, its *Python-based DSL* enables kernels to be written in a Python subset, facilitating testing and integration with PyTorch-based implementations of SmolVLA. The framework's *Type System* supports reduced-precision data types (e.g., `int8`, `fixed<16, 8>`), which are crucial for maximizing the throughput of matrix multiplications on the U280's DSP slices.
 
 /**********************************************************/
 
@@ -87,7 +80,7 @@ Key features of Allo used in this project include:
   - Explain systolic arrays and dataflow architectures.
 ]
 
-Spatial architectures, such as Systolic Arrays, are a natural fit for the dense matrix multiplications (GEMMs) found in Transformer attention and MLP layers. When working with memory bound kernels it is extremely important to utilize FIFO streaming between PEs to avoid off-chip HBM access. We utilized a spatial dataflow architecture
+Spatial architectures, such as Systolic Arrays, are a natural fit for the dense matrix multiplications (GEMMs) found in Transformer attention and MLP layers. When working with memory-bound kernels, it is extremely important to utilize FIFO streaming between PEs to avoid off-chip HBM access. We utilized a spatial dataflow architecture.
 
 === Temporal Architectures
 
@@ -96,4 +89,4 @@ Spatial architectures, such as Systolic Arrays, are a natural fit for the dense 
   - Explain instruction-based execution.
 ]
 
-Temporal architectures rely on SIMD (Single Instruction, Multiple Data) execution units where the same operation is broadcast to multiple data points. While flexible, they often require complex control logic to manage instruction scheduling. For our fixed-function Vision Encoder accelerator, we prioritize spatial dataflow to leverage the massive parallelism of the FPGA fabric.
+Temporal architectures rely on SIMD (Single Instruction, Multiple Data) execution units where the same operation is broadcast to multiple data points. While flexible, they often require complex control logic to manage instruction scheduling. For our fixed-function Vision Encoder accelerator, we prioritized spatial dataflow to leverage the massive parallelism of the FPGA fabric.
