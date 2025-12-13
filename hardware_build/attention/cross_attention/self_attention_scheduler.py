@@ -63,48 +63,48 @@ def schedule_self_attention_row_parallelism(
     mode: str = "csyn",
     should_return=False
 ):
-    # for P in [1, 2, 4, 8]:
-        # for dataflow in [True, False]:
-    dataflow = True
-    P = 12
-    P_s = 4  # Summation parallelism factor
-    s = allo.customize(sa_2, instantiate=[
-        A_T,   # Kernel data type
-        L,     # Token Length 
-        H,     # Number of Heads
-        H*D_h, # Embedding Length
-        D_h,   # Head Embedding Length
-        P,     # Parallelism factor - SDPA
-        P_s    # Summation parallelism factor - SDPA
-    ])
-    
-    loops = s.get_loops()
-    outer_loop = loops["head_loop"]
-    for pipeline_loop in [
-        "k_precalc",
-        "j_attn",
-        "j_exp_P_s",
-        "j_norm",
-        "j_out",
-        "i_final"
-    ]:
-        s.pipeline(outer_loop[pipeline_loop])
-    
-    if dataflow:
-        for dataflow_loop in ["h1", "i_out"]:
-            s.dataflow(outer_loop[dataflow_loop])    
-    
-    dtype_str = {
-        int4: "int4", int8: "int8",
-        float32: "float32",
-        bfloat16: "bfloat16"
-    }[A_T]
+    P_s = 4  
+    for P in [1, 2, 4, 8]:
+        for P_2 in [1, 2]:
+            for dataflow in [True, False]:
+                s = allo.customize(sa_2, instantiate=[
+                    A_T,   # Kernel data type
+                    L,     # Token Length 
+                    H,     # Number of Heads
+                    H*D_h, # Embedding Length
+                    D_h,   # Head Embedding Length
+                    P,     # Parallelism factor - SDPA
+                    P_s    # Summation parallelism factor - SDPA
+                ])
+                
+                loops = s.get_loops()
+                outer_loop = loops["head_loop"]
+                s.unroll(outer_loop["k_precalc"], factor=P_2*P)  # Unroll summation loop
+                for pipeline_loop in [
+                    "k_precalc",
+                    "j_attn",
+                    "j_exp_P_s",
+                    "j_norm",
+                    "j_out",
+                    "i_final"
+                ]:
+                    s.pipeline(outer_loop[pipeline_loop])
+                
+                if dataflow: 
+                    for dataflow_loop in ["h1", "i_out"]:
+                        s.dataflow(outer_loop[dataflow_loop])    
+                
+                dtype_str = {
+                    int4: "int4", int8: "int8",
+                    float32: "float32",
+                    bfloat16: "bfloat16"
+                }[A_T]
 
 
     s.build(
         target="vitis_hls", 
         mode="csyn", 
-        project=f"final_result_dataflow_{dataflow}_P_{P}_int8.prj"
+        project=f"final_result_dataflow_{dataflow}_P_{P}_int8_{P_2*P}.prj"
     )()
 
 def schedule_layer_norm(
