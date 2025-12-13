@@ -8,7 +8,7 @@
 
 == SmolVLA
 
-#todo(Sam, done: 20%)[
+#todo(Sam, done: 100%)[
   *General Overview*: Explain the SmolVLA architecture.
   - Discuss the motivation for small VLA models from the paper.
   - Describe the overall pipeline: Visual Input -> Action Output.
@@ -21,7 +21,7 @@ The VLM processes the visual observations (from up to 3 cameras) and the user's 
 
 === Action Expert
 
-#todo(Ezra, done: 20%)[
+#todo(Ezra, done: 100%)[
   *Action Expert Details*:
   - Explain the role of the Action Expert in the SmolVLA pipeline.
   - Discuss how it interacts with the VLM/LLM components.
@@ -34,7 +34,7 @@ The computational core consists of Cross-Attention layers, where query tokens (r
 
 === Large Language Model
 
-#todo(Ezra, done: 20%)[
+#todo(Ezra, done: 100%)[
   *LLM Component*:
   - Describe the specific LLM used.
   - Explain the prompt engineering or fine-tuning aspect.
@@ -46,7 +46,7 @@ The VLM component of SmolVLA handles semantic scene understanding. It tokenizes 
 
 === Vision Transformer Model
 
-#todo(Sam, done: 20%)[
+#todo(Sam, done: 100%)[
   *ViT Details*:
   - Describe the Vision Transformer architecture (Patch Embedding, Attention Blocks).
   - Mention specific parameters from `hardware_build/attention/config.py` (e.g., hidden size, number of heads).
@@ -75,7 +75,7 @@ A key feature of Allo utilized in this project is *Composable Transformations*, 
 
 === Spatial Architectures
 
-#todo(Ezra, done: 10%)[
+#todo(Ezra, done: 100%)[
   *Spatial Dataflow*:
   - Explain systolic arrays and dataflow architectures.
 ]
@@ -84,7 +84,7 @@ Spatial architectures, such as Systolic Arrays, are a natural fit for the dense 
 
 === Temporal Architectures
 
-#todo(Ezra, done: 10%)[
+#todo(Ezra, done: 100%)[
   *Temporal Execution*:
   - Explain instruction-based execution.
 ]

@@ -4,7 +4,7 @@
 
 = Analytical Modeling Framework
 
-#todo(Ezra, done: 0%)[
+#todo(Ezra, done: 99%)[
   *Framework Overview*:
   - Define the scope of analytical modeling (Roofline, resource bounds).
   - Referenced `roofline_analysis/roofline_critique.md` for methodology.
@@ -48,7 +48,7 @@ Crucially, for the *Action Expert*, we utilize a static optimization for the Cro
 == Resource Constraints
 === Compute Resource Constraints
 
-#todo(Stanley, done: 100%)[
+#todo(Stanley, done: 99%)[
   *DSP/Logic Constraints*:
   - Discuss U280 DSP limits vs. required DSPs for matrix mults.
   - Explain how data types (int8 vs fp32) affect this.
@@ -63,7 +63,7 @@ Another technique we use is mapping our MAC operations to DSP slices, which are 
 === Memory Capacity Constraints
 
 
-#todo(Ezra, done: 100%)[
+#todo(Ezra, done: 99%)[
   *On-chip Memory*:
   - Analyze HBM vs BRAM/URAM usage.
   - Discuss buffering strategies for weights/activations.
@@ -77,7 +77,7 @@ We analyze the storage requirements to determine where data must reside. The ori
 
 === Memory Port Constraints
 
-#todo(Ezra, done: 0%)[
+#todo(Ezra, done: 99%)[
   *Port/Bank Conflicts*:
   - Explain HLS partitioning constraints.
   - Mention array partitioning directives used in Allo.
