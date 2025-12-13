@@ -3,4 +3,4 @@
 	url = https://github.com/huggingface/lerobot.git
 [submodule "submodules/allo"]
 	path = submodules/allo
-	url = https://github.com/cornell-zhang/allo.git
+	url = https://github.com/EzraReiss/allo.git

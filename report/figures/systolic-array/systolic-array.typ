@@ -1,8 +1,8 @@
 
 #figure(
-  caption: [*Diagram of a systolic array performing a matrix multiplication* Wikipedia.],
+  caption: [*Systolic Array Architecture.* A 2D array of Processing Elements (PEs) that passes data rhythmically (systolically) across rows and columns. This architecture maximizes data reuse for matrix multiplications, minimizing memory bandwidth requirements. (Wikipedia)],
   image(
     "systolic-array.png",
-    width: 40%
-  )
-) <fig:mlp-layers>
+    width: 40%,
+  ),
+) <fig:systolic-array>
