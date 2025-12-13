@@ -46,7 +46,6 @@ The computational Demands are summarized by the expected MACs per token for a si
 
 #include "../figures/analytical-modeling/dimensions.typ"
 
-
 #include "../figures/analytical-modeling/macs-standard.typ"
 
 #include "../figures/analytical-modeling/macs-gqa.typ"
