@@ -20,10 +20,10 @@
 The Vision Encoder processes raw camera inputs using a standard 12-layer Vision Transformer architecture. This component handles 1024 patches per image, treating each $32 times 32$ patch (derived from a $512 times 512$ image) as a token. The model employs a hidden size ($D$) of 768, with 12 heads and an MLP expansion factor of 4x (resulting in an intermediate dimension of 3072).
 
 *2. VLM Backbone (Vision-Language Model)*
-Fusing visual embeddings with text instructions, the VLM Backbone operates with a hidden size of 960. It processes a total of 113 tokens per camera—significantly fewer than the encoder—comprising 192 visual tokens, 48 text instruction tokens, and a single robot state token.
+Fusing visual embeddings with text instructions, the VLM Backbone operates with a hidden size of 960. It processes a total of 113 tokens per camera—significantly fewer than the encoder—comprising 192 visual tokens, 48 text instruction tokens, and a single robot state token. This goes through a process of early exit where it only utilizes 16 out of the 32 layers in the VLM backbone it is based on.
 
 *3. Action Expert*
-The Action Expert generates control sequences via a conditional diffusion process (Flow Matching) over a prediction horizon of 50 action tokens. It executes 10 diffusion steps per inference using a 16-layer architecture that alternates between Self-Attention (even layers) and Cross-Attention (odd layers), where the latter attends to the VLM context. The model uses a hidden size of 720 (0.75x the VLM width) and employs Grouped Query Attention with 12 query heads and 4 key/value heads, each with a dimension of 80. The 50 Action Tokens interact with the 241 VLM Context Tokens through the odd-numbered Cross-Attention layers.
+The Action Expert generates control sequences via a conditional diffusion process (Flow Matching) over a prediction horizon of 50 action tokens. It executes 10 diffusion steps per inference using a 16-layer architecture that alternates between Self-Attention and Cross-Attention, where the latter attends to the VLM context. The model uses a hidden size of 720 (0.75x the VLM width) and employs Grouped Query Attention with 12 query heads and 4 key/value heads, each with a dimension of 80. The 50 Action Tokens interact with the 113 VLM Context Tokens through the odd-numbered Cross-Attention layers.
 
 *Compute Analysis*
 Since our FPGA implementation utilizes `int8` quantization to maximize throughput on DSP slices, we quantify computational complexity in terms of Multiply-Accumulate operations (MACs) rather than FLOPs. A single MAC corresponds to one multiplication and one addition (effectively 2 ops if counting FLOPs).
@@ -48,7 +48,7 @@ Crucially, for the *Action Expert*, we utilize a static optimization for the Cro
 == Resource Constraints
 === Compute Resource Constraints
 
-#todo(Stanley, done: 99%)[
+#todo(Stanley, done: 100%)[
   *DSP/Logic Constraints*:
   - Discuss U280 DSP limits vs. required DSPs for matrix mults.
   - Explain how data types (int8 vs fp32) affect this.
@@ -71,17 +71,21 @@ Another technique we use is mapping our MAC operations to DSP slices, which are 
 
 *Memory Footprint Analysis*
 
-We analyze the storage requirements to determine where data must reside. The original model weights in `bfloat16` precision occupy approx. 897 MB. By quantizing to `int8`, we reduce the total model footprint to *448 MB*. This still exceeds the U280's on-chip capacity (~40-50 MB), mandating off-chip HBM storage.
+We analyze the storage requirements to determine where data must reside. The original model weights in `bfloat16` precision occupy approx. 897 MB. By quantizing to `int8`, we reduce the total model footprint to *448 MB*. This still exceeds the U280's on-chip capacity (\~40-50 MB), mandating off-chip HBM storage.
 
 #include "../figures/analytical-modeling/mem-footprint.typ"
 
 === Memory Port Constraints
 
-#todo(Ezra, done: 99%)[
+#todo(Ezra, done: 90%)[
   *Port/Bank Conflicts*:
   - Explain HLS partitioning constraints.
   - Mention array partitioning directives used in Allo.
 ]
+
+Port/Bank Conflicts: While High Bandwidth Memory (HBM) offers massive theoretical throughput, achieving this peak performance requires careful management of memory ports. The U280 FPGA fabric interacts with memory via physical ports; if multiple parallel processing elements (PEs) attempt to access the same BRAM or URAM bank simultaneously, a port conflict occurs, stalling the pipeline. This is particularly critical in our design where we aim to unroll loops to maximize parallelism.
+
+To mitigate this, we heavily utilize Allo’s partition() scheduling primitive. By applying array partitioning, specifically cyclic and block partitioning, we split large tensors across multiple physical memory banks. This ensures that when the HLS compiler unrolls a loop (e.g., processing 4 elements of a vector simultaneously), each access maps to a distinct physical port, allowing for conflict-free parallel reads and writes. Without this partitioning, the effective bandwidth would be throttled by the limited number of read/write ports (typically two) per memory block, nullifying the benefits of our spatial architecture.
 
 === Memory Bandwidth Constraints
 
@@ -91,7 +95,7 @@ Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the
 
 #include "../figures/analytical-modeling/mem-transfer.typ"
 
-*Analysis*: The Action Expert accounts for over 80% of the total off-chip data transfer. With a realistic HBM bandwidth of ~300 GB/s, the memory transfer alone sets a hard lower bound on latency of approx. 4.6 ms ($1378 " MB" / 300 " GB/s"$), not accounting for compute or latency hiding.
+*Analysis*: The Action Expert accounts for over 80% of the total off-chip data transfer. With a realistic HBM bandwidth of \~300 GB/s, the memory transfer alone sets a hard lower bound on latency of approx. 4.6 ms ($1378 " MB" / 300 " GB/s"$), not accounting for compute or latency hiding.
 
 
 /**********************************************************/
@@ -107,20 +111,20 @@ We visualize these characteristics against the hardware limits in the Roofline m
 #include "../figures/roofline-analysis/roofline-analysis.typ"
 
 *Analysis*:
-The Roofline analysis reveals that all three components of SmolVLA sit well to the right of the U280's ridge point (~11.8 Ops/Byte). This indicates that the design is fundamentally *compute-bound*, limited by the DSP processing power rather than HBM bandwidth. The *Vision Encoder* is extremely compute-bound (OI ~2048), suggesting that optimizing for DSP utilization (e.g., using systolic arrays) will yield direct performance gains. Similarly, the *Action Expert*, while having a lower OI (~103) due to the requisite weight reloading for the diffusion process, remains in the compute-bound regime. However, it operates significantly closer to the memory wall; any inefficiency in the memory controller could easily shift this component into a bandwidth-bound regime.
+The Roofline analysis reveals that all three components of SmolVLA sit well to the right of the U280's ridge point (\~11.8 Ops/Byte). This indicates that the design is fundamentally *compute-bound*, limited by the DSP processing power rather than HBM bandwidth. The *Vision Encoder* is extremely compute-bound (OI \~2048), suggesting that optimizing for DSP utilization (e.g., using systolic arrays) will yield direct performance gains. Similarly, the *Action Expert*, while having a lower OI (\~103) due to the requisite weight reloading for the diffusion process, remains in the compute-bound regime. However, it operates significantly closer to the memory wall; any inefficiency in the memory controller could easily shift this component into a bandwidth-bound regime.
 
-=== Latency Estimation
+// === Latency Estimation
 
-#todo(Ezra, done: 0%)[
-  *Latency Breakdown*:
-  - Estimate latency per layer.
-  - Identify the bottleneck layer (Communication vs Computation).
-]
+// #todo(Ezra, done: 0%)[
+//   *Latency Breakdown*:
+//   - Estimate latency per layer.
+//   - Identify the bottleneck layer (Communication vs Computation).
+// ]
 
-=== Work Balancing
+// === Work Balancing
 
-#todo(Sam, done: 0%)[
-  *Load Balancing*:
-  - Discuss pipelining efficiency.
-  - Analyze if any stage is a significant bottleneck.
-]
+// #todo(Sam, done: 0%)[
+//   *Load Balancing*:
+//   - Discuss pipelining efficiency.
+//   - Analyze if any stage is a significant bottleneck.
+// ]

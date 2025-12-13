@@ -40,7 +40,6 @@ To evaluate the MLP, we estimated latency by measuring the cycle count for a sin
 It can be seen from the table (Figure 9) that the 1x1 kernels have much higher latency as well as lower resource usage, while the larger kernels have significantly lower latency, but much higher resource utilization (excluding BRAMs). This is a result 
 
 
-
 === Ablation
 
 #todo(Stanley, done: 100%)[
