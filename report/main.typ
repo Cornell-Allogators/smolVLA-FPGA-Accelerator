@@ -30,6 +30,7 @@
   ]
 )
 
+
 // --- 2. Title and Author Header ---
 #align(center)[
   #text(1.5em, weight: "bold")[Accelerating SmolVLA on an FPGA Using Allo]
