@@ -18,7 +18,13 @@
 )
 
 #set heading(numbering: "1.1.")
-#set figure(supplement: "Fig.")
+#set figure(supplement: it => {
+  if it.func() == table {
+    "Tab."
+  } else {
+    "Fig."
+  }
+})
 
 #show figure.caption: it => box(
   width: 90%, context [
