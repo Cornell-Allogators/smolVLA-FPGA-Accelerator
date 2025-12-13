@@ -26,10 +26,10 @@ def mlp_dataflow[
     B_1: "T[4 * D]",
     W_2: "T[4 * D, D]",
     B_2: "T[D]",
-    out: "T[L, D]"
+    out: "int32[L, D]"  # Output is int32 to hold full precision
 ) :
     # FC1: X (L x D) * W_1 (D x 4D) -> (L x 4D)
-    # Use int32 accumulators for the matmul to prevent overflow on integer inputs.
+    # Use int32 accumulators to prevent overflow
     FC1_acc: int32[L, 4 * D] = 0
     for i, j in allo.grid(L, 4 * D, name="fc1_tile"):
         for k in allo.reduction(D, name="fc1_reduce"):
@@ -37,22 +37,25 @@ def mlp_dataflow[
             b_i: int32 = W_1[k, j]
             FC1_acc[i, j] += a_i * b_i
 
-    # Add bias B_1 (length 4D) 
-    FC1_out: "T[L, 4 * D]" = 0
+    # Add bias B_1 (length 4D) - keep as int32
+    FC1_out: int32[L, 4 * D] = 0
     for i, j in allo.grid(L, 4 * D, name="fc1_bias_add"):
         tmp_acc: int32 = FC1_acc[i, j]
-        FC1_out[i, j] = tmp_acc + B_1[j]
+        bias_val: int32 = B_1[j]
+        FC1_out[i, j] = tmp_acc + bias_val
 
-    # GELU activation (approximation)
-    FC1_act: "T[L, 4 * D]" = 0
+    # GELU activation (approximation) - compute in float, store as int32
+    FC1_act: int32[L, 4 * D] = 0
     for i, j in allo.grid(L, 4 * D, name="gelu_loop"):
-        x = FC1_out[i, j]
-        x3 = x * x * x
-        inner = 0.7978845608028654 * (x + 0.044715 * x3)
-        FC1_act[i, j] = 0.5 * x * (1.0 + allo.tanh(inner))
+        x_int: int32 = FC1_out[i, j]
+        x_float: float32 = x_int
+        x3 = x_float * x_float * x_float
+        inner = 0.7978845608028654 * (x_float + 0.044715 * x3)
+        gelu_out = 0.5 * x_float * (1.0 + allo.tanh(inner))
+        # Store result as int32
+        FC1_act[i, j] = gelu_out
 
     # FC2: (L x 4D) * (4D x D) -> (L x D)
-    # Use int32 accumulators for FC2 as well.
     FC2_acc: int32[L, D] = 0
     for i, j in allo.grid(L, D, name="fc2_tile"):
         for k in allo.reduction(4 * D, name="fc2_reduce"):
@@ -60,8 +63,9 @@ def mlp_dataflow[
             b_i: int32 = W_2[k, j]
             FC2_acc[i, j] += a_i * b_i
 
-    # Add bias B_2 and write to output (convert from int32 accumulator)
+    # Add bias B_2 and write to output
     for i, j in allo.grid(L, D, name="fc2_bias_add"):
         tmp_acc2: int32 = FC2_acc[i, j]
-        out[i, j] = tmp_acc2 + B_2[j]
+        bias_val2: int32 = B_2[j]
+        out[i, j] = tmp_acc2 + bias_val2
 

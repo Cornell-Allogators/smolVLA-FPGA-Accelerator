@@ -15,63 +15,98 @@ def schedule_mlp(
     mode: str = "csyn",
     should_return=False
 ):
+    P = 4  # Parallelism factor similar to self_attention
+    for dataflow in [True, False]:
+        L = 1024
+        D = 4*768
+        s = allo.customize(mlp_dataflow, instantiate=[
+            A_T,   # Kernel data type
+            D,     # Feature Dimension
+            L,     # Number of tokens 
+        ])
+        
+        loops = s.get_loops()
+        print(loops)
+        
+        # ===== FC1 Matmul Scheduling =====
+        outer_loop = loops["fc1_tile"]
+        
+        # i = 1024, j = 12288, k = 3072
+        # If unroll factor is small enough, unroll k; else spill to j
+        if P < 3072:
+            # Unroll k: partition on k dimension (X dim=2, W_1 dim=1)
+            s.partition(s.X, partition.Cyclic, dim=2, factor=P)
+            s.partition(s.W_1, partition.Cyclic, dim=1, factor=P)
+            s.unroll(outer_loop["k"], factor=P)
+        else:
+            # Unroll j: partition both k and j dimensions
+            s.partition(s.X, partition.Cyclic, dim=2, factor=min(P, 3072))
+            s.partition(s.W_1, partition.Cyclic, dim=1, factor=min(P, 3072))
+            s.partition(s.W_1, partition.Cyclic, dim=2, factor=P//3072)
+            s.partition(s.FC1_acc, partition.Cyclic, dim=2, factor=P//3072)
+            s.unroll(outer_loop["j"], factor=P//3072)
+        
+        # Pipeline the reduction loop
+        s.pipeline(outer_loop["k"])
+        
+        # ===== FC2 Matmul Scheduling =====
+        outer_loop = loops["fc2_tile"]
+        
+        # i = 1024, j = 3072, k = 12288
+        # If unroll factor is small enough, unroll k; else spill to j
+        if 4*P < 12288:
+            # Unroll k: partition on k dimension (FC1_act dim=2, W_2 dim=1)
+            s.partition(s.FC1_act, partition.Cyclic, dim=2, factor=4*P)
+            s.partition(s.W_2, partition.Cyclic, dim=1, factor=4*P)
+            s.unroll(outer_loop["k"], factor=4*P)
+        else:
+            # Unroll j: partition both k and j dimensions
+            s.partition(s.FC1_act, partition.Cyclic, dim=2, factor=min(4*P, 12288))
+            s.partition(s.W_2, partition.Cyclic, dim=1, factor=min(4*P, 12288))
+            s.partition(s.W_2, partition.Cyclic, dim=2, factor=(4*P)//12288)
+            s.partition(s.FC2_acc, partition.Cyclic, dim=2, factor=(4*P)//12288)
+            s.unroll(outer_loop["j"], factor=(4*P)//12288)
 
-    dataflow = True
-    L = 1024
-    D = 4*768
-    s = allo.customize(mlp_dataflow, instantiate=[
-        A_T,   # Kernel data type
-        D,     # Feature Dimension
-        L,     # Number of tokens 
-    ])
-    
-    loops = s.get_loops()
-    print(loops)
-    outer_loop = loops["fc1_tile"]
-    # Partition W_1 to enable parallel access to its second dimension
-    # s.partition(s.W_1, partition.Cyclic, dim=1, factor=4)
-    print(outer_loop)
-
-
-
-    #s.pipeline(outer_loop["j"])  
-    #s.pipeline(outer_loop["k"])  
-
-    outer_loop = loops["fc2_tile"]
-    # Partition W_2 so FC2 can read weights in parallel
-    # s.partition(s.W_2, partition.Cyclic, dim=1, factor=4)
-    print(outer_loop)
-
-    if dataflow:
-        for dataflow_loop in ["i"]:
-            outer_loop = loops["fc1_tile"]
-            s.dataflow(outer_loop[dataflow_loop])
-        for dataflow_loop in ["i"]:
-            outer_loop = loops["fc2_tile"]
-            s.dataflow(outer_loop[dataflow_loop])
-
-    if dataflow:
+        # Pipeline the reduction loop
+        s.pipeline(outer_loop["k"])
+        
+        # ===== Bias Add and GELU Scheduling =====
         loops = s.get_loops()
         if "fc1_bias_add" in loops:
-            s.dataflow(loops["fc1_bias_add"])
+            bias_loop = loops["fc1_bias_add"]
+            s.pipeline(bias_loop["j"])
+        
         if "gelu_loop" in loops:
-            s.dataflow(loops["gelu_loop"])
+            gelu_loop = loops["gelu_loop"]
+            s.pipeline(gelu_loop["j"])
+        
+        if "fc2_bias_add" in loops:
+            bias2_loop = loops["fc2_bias_add"]
+            s.pipeline(bias2_loop["j"])
+        
+        # ===== Dataflow Scheduling =====
+        if dataflow:
+            loops = s.get_loops()
+            outer_loop = loops["fc1_tile"]
+            # Apply dataflow to outer i loop like "i_out" in self_attention
+            s.dataflow(outer_loop["i"])
+            
+            outer_loop = loops["fc2_tile"]
+            s.dataflow(outer_loop["i"])
 
-    #s.pipeline(outer_loop["j"])  
-    #s.pipeline(outer_loop["k"])         
-     
-    dtype_str = {
-        int4: "int4", int8: "int8",
-        float32: "float32",
-        bfloat16: "bfloat16"
-    }[A_T]
+        
+         
+        dtype_str = {
+            int4: "int4", int8: "int8",
+            float32: "float32",
+            bfloat16: "bfloat16"
+        }[A_T]
 
-    P = 1
-    s.build(
-        target="vitis_hls",
-        mode=mode,
-        project=f"final_result_dataflow_{dataflow}_P_{P}_int8.prj",
-    )()
+        s.build(
+            target="vitis_hls",
+            mode=mode,
+            project=f"final_result_dataflow_{dataflow}_P_{P}_int8.prj",
+        )()
 
 if __name__ == "__main__":
     schedule_mlp(np.int8, int8, mode="csyn")
