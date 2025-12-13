@@ -2,7 +2,7 @@
 
 
 #figure(
-  caption: [ *Ablation Study of MLP Kernels.* Comparison of latency and resource utilization across different optimization strategies. The optimized systolic array implementation with GELU approximation achieves a significant latency reduction compared to the baseline, fitting within the target resource budget.],
+  caption: [ *Ablation Study of MLP Kernels.* Comparison of latency and resource utilization across different optimization strategies. The optimized systolic array implementation with RELU approximation achieves a significant latency reduction compared to the baseline, fitting within the target resource budget.],
   styled-table(
     columns: 6,
     table.header([Kernel FC1/FC2], [Activation], [Latency (ms)], [BRAM %], [LUT %], [DSP %]),
@@ -23,18 +23,18 @@
     [30.29],
     [4,209 (104.39%)],
     [8,386,130 (643.27%)],
-    [59 ( 0.65%)],
+    [631 ( 6.99%)],
     [Tiled 1x1],
     [RELU],
-    [30.29],
-    [4,209 (104.39%)],
-    [8,386,130 (643.27%)],
-    [59 ( 0.65%)],
+    [8055],
+    [8,480 (210.32%)],
+    [11,035 ( 0.85%)],
+    [4 ( 0.04%)],
     [Tiled 12x30, 40x30],
     [RELU],
-    [30.29],
-    [4,209 (104.39%)],
-    [8,386,130 (643.27%)],
+    [25.05],
+    [3,894 (96.58%)],
+    [43,115 ( 3.31%)],
     [59 ( 0.65%)],
   ),
 ) <tab:mlp-ablation>
