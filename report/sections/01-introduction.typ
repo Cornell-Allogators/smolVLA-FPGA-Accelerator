@@ -25,5 +25,7 @@ We specifically target the Vision Encoder component of the SmolVLA architecture,
 + An implementation of the Self-Attention and Multi-Layer Perceptron (MLP) layers using Allo's composable optimizations.
 + An evaluation of the accelerator's performance in terms of latency and resource utilization (DSP, BRAM) on the U280 platform.
 
+TODO:
+*Allude to results once we have good evaluation benchmark. 
+*
 
-#include "../figures/model-overview/model-overview.typ"

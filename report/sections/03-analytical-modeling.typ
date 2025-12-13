@@ -12,7 +12,6 @@
 
 /**********************************************************/
 
-#include "../figures/analytical-modeling/dimensions.typ"
 
 == Computational Demands
 
@@ -20,7 +19,7 @@
 The Vision Encoder processes raw camera inputs using a standard 12-layer Vision Transformer architecture. This component handles 1024 patches per image, treating each $32 times 32$ patch (derived from a $512 times 512$ image) as a token. The model employs a hidden size ($D$) of 768, with 12 heads and an MLP expansion factor of 4x (resulting in an intermediate dimension of 3072).
 
 *2. VLM Backbone (Vision-Language Model)*
-Fusing visual embeddings with text instructions, the VLM Backbone operates with a hidden size of 960. It processes a total of 113 tokens per camera—significantly fewer than the encoder—comprising 192 visual tokens, 48 text instruction tokens, and a single robot state token. This goes through a process of early exit where it only utilizes 16 out of the 32 layers in the VLM backbone it is based on.
+Fusing visual embeddings with text instructions, the VLM Backbone operates with a hidden size of 960. It processes a total of 113 tokens per camera—significantly fewer than the encoder—comprising 64 visual tokens, 48 text instruction tokens, and a single robot state token. This goes through a process of early exit where it only utilizes 16 out of the 32 layers in the VLM backbone it is based on.
 
 *3. Action Expert*
 The Action Expert generates control sequences via a conditional diffusion process (Flow Matching) over a prediction horizon of 50 action tokens. It executes 10 diffusion steps per inference using a 16-layer architecture that alternates between Self-Attention and Cross-Attention, where the latter attends to the VLM context. The model uses a hidden size of 720 (0.75x the VLM width) and employs Grouped Query Attention with 12 query heads and 4 key/value heads, each with a dimension of 80. The 50 Action Tokens interact with the 113 VLM Context Tokens through the odd-numbered Cross-Attention layers.
@@ -29,6 +28,9 @@ The Action Expert generates control sequences via a conditional diffusion proces
 Since our FPGA implementation utilizes `int8` quantization to maximize throughput on DSP slices, we quantify computational complexity in terms of Multiply-Accumulate operations (MACs) rather than FLOPs. A single MAC corresponds to one multiplication and one addition (effectively 2 ops if counting FLOPs).
 
 The computational Demands are summarized by the expected MACs per token for a single Transformer layer. We distinguish between the Standard Multi-Head Attention (MHA) used in the Vision Encoder, and the Grouped Query Attention (GQA) used in the VLM Backbone and Action Expert.
+
+#include "../figures/analytical-modeling/dimensions.typ"
+
 
 #include "../figures/analytical-modeling/macs-gqa.typ"
 
@@ -54,11 +56,13 @@ Crucially, for the *Action Expert*, we utilize a static optimization for the Cro
   - Explain how data types (int8 vs fp32) affect this.
 ]
 
-Fundamentally, most operations in SmolVLA can be reduced to matrix operations. These operations can in turn be broken down into multiply and addition steps, commonly called multiply and accumulate operations, or MACs. A naïve approach is to implement all of these operations directly in the FPGA fabric, synthesizing them into LUTs and flip-flops. However, this can be highly inefficient because floating-point operations often require thousands of LUTs and flip-flops.
+Fundamentally, most operations in SmolVLA can be reduced to matrix operations. These operations can in turn be broken down into multiply and accumulate steps, commonly called multiply and accumulate operations, or MACs. A naïve approach is to implement all of these operations directly in the FPGA fabric, synthesizing them into LUTs and flip-flops. However, this can be highly inefficient because floating-point operations often require thousands of LUTs and flip-flops.
 
 One way to reduce this overhead is to use lower-precision datatypes. The default floating-point format is FP32, which uses a whopping 4 bytes per value. By quantizing the model to FP16, bfloat16, FP8, or even FP4, we can significantly reduce memory usage while maintaining acceptable precision. Another approach is to convert the relatively complex FP32 values into integers. Integer ALUs require far fewer hardware resources than their floating-point counterparts, which makes them an appealing option for acceleration.
 
 Another technique we use is mapping our MAC operations to DSP slices, which are hardened blocks on the FPGA designed to perform multiply and accumulate operations every cycle when pipelined. This saves valuable hardware resources and allows larger, more complex designs. On the AMD Alveo U280, there are 9,024 DSP slices, which means we can process at least 9,024 MAC operations per clock cycle with full utilization. However, we can use instantiate "soft" FPUs/ALUs on the LUT fabric, or we can use bit packing tricks to do up to 4 int4 MACs per clock cycle per DSP.
+
+*TODO*: Add what the maximum MACs throughput on the U280
 
 === Memory Capacity Constraints
 
@@ -95,7 +99,7 @@ Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the
 
 #include "../figures/analytical-modeling/mem-transfer.typ"
 
-*Analysis*: The Action Expert accounts for over 80% of the total off-chip data transfer. With a realistic HBM bandwidth of \~300 GB/s, the memory transfer alone sets a hard lower bound on latency of approx. 4.6 ms ($1378 " MB" / 300 " GB/s"$), not accounting for compute or latency hiding.
+*Analysis*: The Action Expert accounts for over 80% of the total off-chip data transfer. With a realistic HBM bandwidth of \~300 GB/s, the memory transfer alone sets a hard lower bound on latency of approx. 4.6 ms ($937 / 300 " GB/s"$), not accounting for compute or latency hiding.
 
 
 /**********************************************************/
