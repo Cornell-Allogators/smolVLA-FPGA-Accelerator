@@ -123,34 +123,9 @@ Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the
 == Performance Estimation
 
 
-#figure(
-  caption: [Operational Intensity and Hardware Limits],
-  styled-table(
-    columns: 4,
-    table.header([*Component*], [*OI (Ops/Byte)*], [*Bound*], [*Peak Perf*]),
-    [Vision Encoder],
-    [2048],
-    [Compute Bound],
-    [5.4 TOPS],
-    [VLM Backbone],
-    [226],
-    [Compute Bound],
-    [5.4 TOPS],
-    [Action Expert],
-    [103],
-    [Compute Bound],
-    [5.4 TOPS],
-    [*U280 Ridge*],
-    [*11.8*],
-    [---],
-    [---],
-  ),
-) <tab:oi-analysis>
+#include "../figures/analytical-modeling/oi-analysis.typ"
 
-#figure(
-  image("../figures/roofline_analysis.png", width: 80%),
-  caption: [Roofline Analysis of SmolVLA on Alveo U280],
-) <fig:roofline>
+#include "../figures/roofline-analysis/roofline-analysis.typ"
 
 *Analysis*:
 The Roofline analysis reveals that all three components of SmolVLA sit well to the right of the U280's ridge point (~11.8 Ops/Byte). This indicates that the design is fundamentally *compute-bound*, limited by the DSP processing power rather than HBM bandwidth.
