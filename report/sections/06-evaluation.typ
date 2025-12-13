@@ -35,7 +35,7 @@
   - Discuss impact of batch size (if applicable) or sequence length.
 ]
 
-When evaluating the MLP, we estimate the performance of the latency based on the number of cycles it takes to execute one query. We also estimated the resource utilization by using the Vitis report. We count the LUT, FF, DSP, and BRAM utilization to determine how much of the FPGA is being consumed by the MLP.
+When evaluating the MLP, we estimate the performance of the latency based on the number of cycles it takes to execute one query. We also estimated the resource utilization by using the Vitis report. We count the LUT, FF, DSP, and BRAM utilization to determine how much of the FPGA resources is being consumed by the MLP.
 
 
 
