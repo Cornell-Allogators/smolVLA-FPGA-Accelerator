@@ -66,8 +66,8 @@ def schedule_self_attention_row_parallelism(
     # for P in [1, 2, 4, 8]:
         # for dataflow in [True, False]:
     dataflow = True
-    P = 12
-    P_s = 4  # Summation parallelism factor
+    P = 2
+    P_2 = 2
     s = allo.customize(sa_2, instantiate=[
         A_T,   # Kernel data type
         L,     # Token Length 
@@ -80,6 +80,7 @@ def schedule_self_attention_row_parallelism(
     
     loops = s.get_loops()
     outer_loop = loops["head_loop"]
+    s.unroll(outer_loop["k_precalc"], factor=P_2)  # Unroll summation loop
     for pipeline_loop in [
         "k_precalc",
         "j_attn",
@@ -90,7 +91,7 @@ def schedule_self_attention_row_parallelism(
     ]:
         s.pipeline(outer_loop[pipeline_loop])
     
-    if dataflow:
+    if dataflow: 
         for dataflow_loop in ["h1", "i_out"]:
             s.dataflow(outer_loop[dataflow_loop])    
     
@@ -104,7 +105,7 @@ def schedule_self_attention_row_parallelism(
     s.build(
         target="vitis_hls", 
         mode="csyn", 
-        project=f"final_result_dataflow_{dataflow}_P_{P}_int8.prj"
+        project=f"final_result_dataflow_{dataflow}_P_{P}_int8_{P_2}.prj"
     )()
 
 def schedule_layer_norm(
