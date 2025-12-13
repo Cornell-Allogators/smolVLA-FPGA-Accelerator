@@ -36,7 +36,7 @@ def self_attention[
         K: "int32[L, D_h]"
         V: "int32[L, D_h]" 
 
-        for i_precalc in allo.grid(L//P, name="mm_i_loop"):
+        for i_precalc in allo.grid(L, name="mm_i_loop"):
             for k_precalc in allo.reduction(D, name="prj_dot_product"): #Pipelined Loop
                 for j_precalc in allo.grid(D_h, name="mm_j_loop"):
                     X_int32: "int16" = X[i_precalc, k_precalc]
