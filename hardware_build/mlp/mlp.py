@@ -16,6 +16,48 @@ from common_kernels.kernels import add_bias
 
 # D in attention is 1/4 in of the MLP
 
+def layer_norm[
+    T: (int4, int8),
+    L: int16,
+    D: int16
+](
+    x: "int32[L, D]",
+    gamma: "T[D]",
+    beta: "T[D]",
+    x_out: "T[L, D]"
+):
+    """LayerNorm that takes int32 input and outputs int8."""
+    total: "int32[L]" = 0
+    total_sq: "int32[L]" = 0
+    
+    for i_sum in allo.grid(L, name="ln_inner_outer"):
+        for j_sum in allo.reduction(D, name="ln_inner"):
+            val: "int32" = x[i_sum, j_sum]
+            total[i_sum] += val
+            total_sq[i_sum] += val * val
+            
+    mean: "float32[L]"
+    inv_std: "float32[L]"
+            
+    for i_stat in allo.grid(L, name="ln_stats_loop"):
+        mean_i: "float32" = total[i_stat] / D
+        mean[i_stat] = mean_i 
+        variance: "float32" = (total_sq[i_stat] / D) - (mean_i * mean_i)
+        inv_std[i_stat] = 1.0 / allo.sqrt(variance + 1e-8)
+        
+    for i_out in allo.grid(L, name="ln_out_outer"):
+        mean_i: "float32" = mean[i_out]
+        inv_std_i: "float32" = inv_std[i_out]
+        
+        for j_out in allo.grid(D, name="ln_out_inner"):
+            x_val: "float32" = x[i_out, j_out]
+            norm_val: "float32" = (x_val - mean_i) * inv_std_i
+            gamma_val: "float32" = gamma[j_out]
+            beta_val: "float32" = beta[j_out]
+            scaled: "float32" = norm_val * gamma_val
+            shifted: "float32" = scaled + beta_val
+            x_out[i_out, j_out] = shifted
+
 def mlp_dataflow[
     T: (bfloat16, float32, int4, int8),
     D: int16,  # feature dimension
@@ -26,7 +68,9 @@ def mlp_dataflow[
     B_1: "T[4 * D]",
     W_2: "T[4 * D, D]",
     B_2: "T[D]",
-    out: "int32[L, D]"  # Output is int32 to hold full precision
+    gamma: "T[D]",  # LayerNorm scale
+    beta: "T[D]",   # LayerNorm bias
+    out: "T[L, D]"  # Output is int8 after LayerNorm
 ) :
     # FC1: X (L x D) * W_1 (D x 4D) -> (L x 4D)
     # Use int32 accumulators to prevent overflow
@@ -63,9 +107,40 @@ def mlp_dataflow[
             b_i: int32 = W_2[k, j]
             FC2_acc[i, j] += a_i * b_i
 
-    # Add bias B_2 and write to output
+    # Add bias B_2 to get FC2 output (int32)
+    FC2_out: int32[L, D] = 0
     for i, j in allo.grid(L, D, name="fc2_bias_add"):
         tmp_acc2: int32 = FC2_acc[i, j]
         bias_val2: int32 = B_2[j]
-        out[i, j] = tmp_acc2 + bias_val2
+        FC2_out[i, j] = tmp_acc2 + bias_val2
+    
+    # LayerNorm: Normalize int32 output to int8 range
+    # Step 1: Compute mean and variance for each token (across D dimension)
+    for i in allo.grid(L, name="ln_normalize"):
+        # Accumulate sum and sum of squares
+        total: float32 = 0.0
+        total_sq: float32 = 0.0
+        for j in allo.reduction(D, name="ln_stats_reduce"):
+            val: float32 = FC2_out[i, j]
+            total += val
+            total_sq += val * val
+        
+        # Compute mean and inverse std
+        mean: float32 = total / D
+        mean_sq: float32 = total_sq / D
+        variance: float32 = mean_sq - (mean * mean)
+        inv_std: float32 = 1.0 / allo.sqrt(variance + 1e-8)
+        
+        # Step 2: Normalize and scale each element
+        for j in allo.grid(D, name="ln_scale"):
+            x_val: float32 = FC2_out[i, j]
+            gamma_val: float32 = gamma[j]
+            beta_val: float32 = beta[j]
+            
+            # Normalize: (x - mean) / std
+            normalized: float32 = (x_val - mean) * inv_std
+            # Scale and shift: gamma * normalized + beta
+            scaled: float32 = normalized * gamma_val + beta_val
+            # Convert to int8
+            out[i, j] = scaled
 
