@@ -37,14 +37,12 @@ def self_attention[
         V: "int32[L, D_h]" 
 
         for i_precalc in allo.grid(L//P, name="mm_i_loop"):
-            for p_inner in allo.grid(P, name="p_inner_loop"):
-                i_precalc_actual: int32 = i_precalc * P + p_inner
-                for k_precalc in allo.reduction(D, name="prj_dot_product"):
-                    X_int32: "int16" = X[i_precalc_actual, k_precalc]
-                    for j_precalc in allo.grid(D_h, name="mm_j_loop"):
-                            Q[i_precalc_actual, j_precalc] = (0 if k_precalc == 0 else Q[i_precalc_actual, j_precalc]) + X_int32 * W_q[h1, j_precalc, k_precalc]
-                            K[i_precalc_actual, j_precalc] = (0 if k_precalc == 0 else K[i_precalc_actual, j_precalc]) + X_int32 * W_k[h1, j_precalc, k_precalc]
-                            V[i_precalc_actual, j_precalc] = (0 if k_precalc == 0 else V[i_precalc_actual, j_precalc]) + X_int32 * W_v[h1, j_precalc, k_precalc]
+            for k_precalc in allo.reduction(D, name="prj_dot_product"): #Pipelined Loop
+                for j_precalc in allo.grid(D_h, name="mm_j_loop"):
+                    X_int32: "int16" = X[i_precalc, k_precalc]
+                    Q[i_precalc, j_precalc] = (0 if k_precalc == 0 else Q[i_precalc, j_precalc]) + X_int32 * W_q[h1, j_precalc, k_precalc]
+                    K[i_precalc, j_precalc] = (0 if k_precalc == 0 else K[i_precalc, j_precalc]) + X_int32 * W_k[h1, j_precalc, k_precalc]
+                    V[i_precalc, j_precalc] = (0 if k_precalc == 0 else V[i_precalc, j_precalc]) + X_int32 * W_v[h1, j_precalc, k_precalc]
 
         for i_out in allo.grid(L//P, name="row_loop"):
             attn_row: "int32[P, L]"

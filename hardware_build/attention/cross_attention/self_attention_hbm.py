@@ -215,11 +215,12 @@ if __name__ == "__main__":
         "K_out": 3,
         "V_out": 4,
     }
-    
+    io = False
     print("Building compute_kv_to_hbm kernel...")
     s.build(
         target="vitis_hls",
         mode="csyn",
-        project="compute_kv_hbm.prj",
+        project=f"compute_kv_hbm_{"yes" if io else "no"}_io.prj",
         configs={"hbm_mapping": hbm_mapping},
+        wrap_io=io,
     )()

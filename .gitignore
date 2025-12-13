@@ -220,3 +220,5 @@ WEIGHTS_*.cpp
 .prj/
 *.prj/
 *proj/
+
+shortned_build/
