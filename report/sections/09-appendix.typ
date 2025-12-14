@@ -9,14 +9,12 @@
 
   == Figures and Tables <subsec:appendix-figs>
 
-  === Background <subsubsec:app-background>
+  === Background (@sec:background)  <subsubsec:app-background>
   #include "../figures/model-overview/model-overview.typ"
 
   #v(1em)
 
-  === Analytical Modeling <subsubsec:app-modeling>
-
-  #v(1em)
+  === Analytical Modeling (@sec:modeling) <subsubsec:app-modeling>
 
   #include "../figures/analytical-modeling/dimensions.typ"
 
@@ -48,7 +46,7 @@
 
   #include "../figures/roofline-analysis/roofline-analysis.typ"
 
-  === Implementation <subsubsec:app-impl>
+  === Implementation (@sec:implementations) <subsubsec:app-impl>
   #include "../figures/per-head-loop/per-head-loop.typ"
 
   #v(1em)
@@ -71,7 +69,7 @@
 
   #include "../figures/mlp-packed/mlp-packed.typ"
 
-  === Evaluation <subsubsec:app-eval>
+  === Evaluation (@sec:evaluation) <subsubsec:app-eval>
   #include "../figures/latency-vs-bram/latency-vs-bram.typ"
 
   #v(1em)
