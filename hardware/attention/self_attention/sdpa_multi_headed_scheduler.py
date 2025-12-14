@@ -1,3 +1,12 @@
+import sys
+from pathlib import Path
+# Add self_attention directory to path so we can import sdpa, sdpa_mh
+sys.path.append(str(Path(__file__).resolve().parents[0]))
+# Add hardware directory to path so we can import attention.config
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+# Add allo submodule to path
+sys.path.append(str(Path(__file__).resolve().parents[3] / "submodules" / "allo"))
+
 import allo
 from allo.ir.types import float32, bfloat16, int32, int16, int8, int4
 from allo.customize import Partition as partition
@@ -6,10 +15,6 @@ import qkv_projection as qkv
 import sdpa
 import sdpa_multi_headed as sdpa_mh
 from datetime import datetime
-from pathlib import Path
-import sys
-sys.path.append(str(Path(__file__).resolve().parents[2]))
-from attention.config import CrossAttentionConfig as CAC
 from attention.config import VLMAttentionConfig as VAC
 
 L = VAC.NUM_TOKENS

@@ -1,5 +1,5 @@
 """
-Cross Attention Module
+Self Attention Module Implementation (Renamed from Cross Attention)
 
 This module orchestrates the complete cross-attention computation pipeline:
 1. Q, K, V Projections: Project action input to query and VLM output to key/value
@@ -25,7 +25,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 # Import all the sub-modules
 import qkv_projection as qkv
-import single_headed_sdp as sdp
+from attention.self_attention import single_headed_sdp as sdp
 import softmax
 import matmul_one
 import matmul_two
