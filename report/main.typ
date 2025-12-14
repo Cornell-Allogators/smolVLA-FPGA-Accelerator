@@ -8,13 +8,13 @@
 
 #set page(
   paper: "us-letter",
-  margin: 1in,
+  margin: 0.8in,
   columns: 1,
 )
 
 #set par(
   justify: true,
-  leading: 0.45em,
+  leading: 0.4em,
 )
 
 #set heading(numbering: "1.1.")
@@ -88,3 +88,5 @@
 #include "sections/06-discussion.typ"
 #include "sections/07-related-work.typ"
 #include "sections/08-conclusion.typ"
+
+#bibliography("refs.bib")

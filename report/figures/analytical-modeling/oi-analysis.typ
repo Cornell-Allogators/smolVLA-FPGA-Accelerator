@@ -17,6 +17,7 @@
     [103],
     [Compute Bound],
     [5.4 TOPS],
+    table.hline(),
     [*U280 Ridge*],
     [*11.8*],
     [---],

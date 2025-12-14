@@ -14,6 +14,7 @@
     [Action Expert],
     [937.29],
     [Weights (10x) + I/O (10x)],
+    table.hline(),
     [*Total*],
     [*1201.86*],
     [Dominated by Action Loop],
