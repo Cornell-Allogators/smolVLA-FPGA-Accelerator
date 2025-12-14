@@ -108,6 +108,7 @@
     unoptimized baseline to the fully optimized implementation. Key metrics
     include inference latency (ms) and resource consumption (BRAM, DSP) on
     the U280 FPGA.
+    _Latency is determined by multiplying expected \# cycles by estimated clock period_
   ],
 ) <tab:attention-ablation>
 
