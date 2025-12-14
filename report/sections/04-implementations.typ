@@ -69,7 +69,7 @@ Row Output
 
 
 
-As illustrated in @fig:per-head-loop, we implement a dataflow architecture that processes attention heads in parallel. The pipeline begins with the QKV Precalculation, where the input embeddings are projected into Query, Key, and Value matrices. Due to the limited on-chip memory, we cannot store the full $Q K^T$ matrix. Instead, we compute the attention scores row-by-row in a streaming fashion.The most significant challenge in hardware is the Softmax function. Standard Softmax requires a global summation ($sum e^{x_i}$) across the entire row before any output can be normalized. This dependency naturally inhibits pipelining. To address this, we implement a streaming Softmax variant shown in Fig. 4. We maintain a running max and running sum as data flows through the pipeline5.
+As illustrated in @fig:per-head-loop, we implement a dataflow architecture that processes attention heads in parallel. The pipeline begins with the QKV Precalculation, where the input embeddings are projected into Query, Key, and Value matrices. Due to the limited on-chip memory, we cannot store the full $Q K^T$ matrix. Instead, we compute the attention scores row-by-row in a streaming fashion.The most significant challenge in hardware is the Softmax function. Standard Softmax requires a global summation ($sum e^{x_i}$) across the entire row before any output can be normalized. This dependency naturally inhibits pipelining. To address this, we implement a streaming Softmax variant shown in @fig:per-head-loop-with-ii. We maintain a running max and running sum as data flows through the pipeline5.
 
 #include "../figures/per-head-loop-with-ii/per-head-loop-with-ii.typ"
 
