@@ -4,7 +4,7 @@
 
 = Discussion
 
-#todo(Ezra, done: 40%)[
+#todo(Ezra, done: 100%)[
   *Synthesis of Results*:
   - Discuss specific bottlenecks encountered (e.g., Self-Attention Softmax).
   - Comment on the efficacy of HLS high-level synthesis vs RTL for this workload.
@@ -37,7 +37,6 @@ To address this, we implemented tiling, exploiting temporal reuse and dataflow c
 
 The main contributors to the latency for the MLP are the two fully connected layers, FC1 and FC2, as they account for the majority of the MAC operations. It can be noted that latency will scale approximately linearly with batch size regardless of these optimizations if resource utilization is held constant. To maintain the same latency for larger batch size, resource utilization will scale somewhat linearly.
 
-== Fused Kernel Performance <subsec:fused-perf>
 
 == Future Work
 

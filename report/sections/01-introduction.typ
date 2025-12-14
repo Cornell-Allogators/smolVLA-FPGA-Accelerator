@@ -18,9 +18,9 @@
 
 
 
-Recent advances in Vision-Language-Action (VLA) models have demonstrated the efficacy of integrating visual perception and language understanding for control tasks. However, deploying these models on edge devices remains a significant challenge due to their substantial computational requirements and memory bandwidth constraints. This project focuses on accelerating *SmolVLA*, a compact VLA model designed for efficient robot control, using Field-Programmable Gate Arrays (FPGAs).
+Recent advances in Vision-Language-Action (VLA) models have demonstrated the efficacy of integrating visual perception and language understanding for control tasks. However, deploying these models on edge devices remains a significant challenge due to their substantial computational requirements and memory bandwidth constraints. This project focuses on accelerating SmolVLA, a compact VLA model designed for efficient robot control, using Field-Programmable Gate Arrays (FPGAs).
 
-While General Purpose Graphics Processing Units (GPGPUs) are the standard for training and inference in data centers, FPGAs offer a compelling alternative for edge robotics due to their low latency, deterministic execution, and high energy efficiency. Our work leverages *Allo*, a high-level accelerator design language developed at Cornell University, to implement and optimize the key computational kernels of SmolVLA on a Xilinx Alveo U280 FPGA.
+While General Purpose Graphics Processing Units (GPGPUs) are the standard for training and inference in data centers, FPGAs offer a compelling alternative for edge robotics due to their low latency, deterministic execution, and high energy efficiency. Our work leverages Allo, a high-level accelerator design language developed at Cornell University, to implement and optimize the key computational kernels of SmolVLA on a Xilinx Alveo U280 FPGA.
 
 We specifically target the Vision Encoder component of the SmolVLA architecture, responsible for generating visual embeddings from camera inputs. This report makes the following contributions:
 + A detailed analysis of the computational and memory demands of the SmolVLA Vision Encoder.

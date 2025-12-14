@@ -19,9 +19,9 @@
 
 Our optimized Self-Attention kernel achieves a latency of *17.81 ms* per inference on the Alveo U280. This performance corresponds to the "Best" configuration identified in our ablation study (Dataflow enabled, QKV P-Factor 16, SDP P-Factor 8).
 
-In terms of resource usage, this high-performance configuration is resource-heavy, utilizing approximately *91.93% of the available DSPs* and *111.45% of BRAM* (see @fig:latency-vs-bram and @fig:latency-vs-dsp). Estimates exceeding 100% for BRAM suggest a spillover into URAM resources, which was automatically handled by the toolchain as the design successfully routed.
+In terms of resource usage, this high-performance configuration is resource-heavy, utilizing approximately 91.93% of the available DSPs and 111.45% of BRAM (see @fig:latency-vs-bram and @fig:latency-vs-dsp). Estimates exceeding 100% for BRAM suggest a spillover into URAM resources, which was automatically handled by the toolchain as the design successfully routed.
 
-Comparing this to our analytical modeling in Section 3, the Roofline model predicted a memory-bound lower limit of roughly 4.6 ms based on DRAM bandwidth. However, our analysis correctly identified that the attention layer would be *compute-bound* due to the $O(N^2)$ complexity of the attention map calculation. The measured 17.81 ms reflects this compute bottleneck, as well as the overhead of the Softmax dataflow which prevents full saturation of the memory bandwidth.
+Comparing this to our analytical modeling in Section 3, the Roofline model predicted a memory-bound lower limit of roughly 4.6 ms based on DRAM bandwidth. However, our analysis correctly identified that the attention layer would be compute-bound due to the $O(N^2)$ complexity of the attention map calculation. The measured 17.81 ms reflects this compute bottleneck, as well as the overhead of the Softmax dataflow which prevents full saturation of the memory bandwidth.
 
 #if not use-appendix {
   include "../figures/latency-vs-bram/latency-vs-bram.typ"

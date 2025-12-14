@@ -13,14 +13,8 @@
 
 
 
-This project demonstrated the design and implementation of an FPGA-based accelerator for the SmolVLA Vision Encoder using the Allo framework. By analyzing the computational demands, we identified that the workload is fundamentally compute-bound, requiring efficient utilization of the U280's DSP slices.
+This work demonstrated the effectiveness of high-level synthesis in accelerating the compute-intensive Vision Encoder of SmolVLA. Through our extensive evaluation in @sec:evaluation, we identified that performance is strictly compute-bound, necessitating architectures that maximize DSP utilization to handle the massive number of matrix operations.
 
-Our key contributions include:
+Our results show a critical balance between resource consumption and throughput. For the Attention layers, we identified a highly efficient configuration that balanced performance with available routing resources. By utilizing a moderate unrolling factor (SDP P=4, QKV P=2), we achieved a latency of 24 ms while consuming only 22% of the available DSP resources. This utilization rate suggests significant headroom for further pipelining or multi-kernel integration. Similarly, for the MLP layers, we employed tiled systolic arrays to manage the massive matrix multiplications, achieving a comparable latency of 25.05 ms. This optimized approach enables the entire Vision Encoder to run effectively on the U280 without exhausting on-chip routing resources.
 
-*Architecture Analysis:* We characterized the disparate requirements of the Vision Encoder, VLM Backbone, and Action Expert, identifying the Action Expert's diffusion loop as a major bandwidth consumer.
-
-*Allo Implementation:* We successfully used Allo to generate efficient hardware structures, including systolic arrays and tiled matrix multiplications. Our final optimized Attention kernel achieved a latency of *17.81 ms*, utilizing *92%* of the available DSP resources on the Alveo U280. This highlights the effectiveness of spatial architectures for accelerating the core $O(N^2)$ attention mechanism.
-
-*Feasibility:* Our results suggest that FPGAs are a viable platform for edge VLA inference, provided that the non-linearities (Softmax/GELU) are pipelined effectively to match the throughput of the matrix multiplication engines. The 17.81 ms attention latency fits well within the real-time control loops (typically 10-50Hz) required for robotic manipulation tasks.
-
-Ultimately, Allo proved to be a powerful tool for rapid prototyping, allowing us to explore the design space of tiling factors and array dimensions without rewriting low-level Verilog. For future work, we aim to integrate the full end-to-end VLA pipeline onto the FPGA and explore lower-precision numerical formats (e.g., INT4) to further reduce resource usage and latency.
+Ultimately, we successfully implemented kernels that effectively tradeoff these constraints, achieving end-to-end latencies compatible with real-time robotic control. The use of Allo allowed us to rapidly navigate this complex design space, enabling us to pinpoint the configurations that deliver optimal performance within the U280's limitations. For future work, we aim to integrate the full end-to-end VLA pipeline onto the FPGA and explore lower-precision numerical formats to further reduce resource usage.

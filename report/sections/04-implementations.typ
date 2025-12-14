@@ -23,11 +23,11 @@ The general structure of our kernels follows a three-stage workflow:
 
 *1. Definition:* We define the compute logic (e.g., matrix multiplications, element-wise ops) using high-level primitives. This stage focuses purely on the algorithm's correctness without worrying about hardware details.
 
-*2. Scheduling:* We apply a separate scheduling pass where we inject hardware-specific optimizations. This includes `s.pipeline()` to enable instruction-level parallelism and `s.partition()` to break down memory dependencies. A key optimization we apply is *tiling* (or blocking), which breaks large matrix operations into smaller chunks that fit into the on-chip BRAM, maximizing data reuse and minimizing off-chip memory access.
+*2. Scheduling:* We apply a separate scheduling pass where we inject hardware-specific optimizations. This includes `s.pipeline()` to enable instruction-level parallelism and `s.partition()` to break down memory dependencies. A key optimization we apply is tiling (or blocking), which breaks large matrix operations into smaller chunks that fit into the on-chip BRAM, maximizing data reuse and minimizing off-chip memory access.
 
 *3. Build:* The Allo backend lowers this representation to HLS C++ and subsequently generates the bitstream for the Alveo U280.
 
-For computationally intensive operations like matrix multiplication, we also explore *systolic array* implementations (as visualized in @fig:systolic-array in Section 4.3). This structured arrangement of processing elements minimizes global data movement, allowing us to achieve high frequency and DSP efficiency.
+For computationally intensive operations like matrix multiplication, we also explore systolic array implementations (as visualized in @fig:systolic-array in Section 4.3). This structured arrangement of processing elements minimizes global data movement, allowing us to achieve high frequency and DSP efficiency.
 
 /**********************************************************/
 

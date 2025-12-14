@@ -65,33 +65,33 @@
 
     #include "../figures/roofline-analysis/roofline-analysis.typ"
 
-    // #appendix-separator
+    //#appendix-separator
 
     == Implementation (@sec:implementations) <subsubsec:app-impl>
     #include "../figures/per-head-loop/per-head-loop.typ"
 
-    #appendix-separator
+    //#appendix-separator
 
     #include "../figures/per-head-loop-with-ii/per-head-loop-with-ii.typ"
 
-    // #appendix-separator
+    #appendix-separator
 
     #include "../figures/mlp-layers/mlp-layers.typ"
 
-    #appendix-separator
+    // #appendix-separator
 
     #include "../figures/mlp-layer-math/mlp-layers-math.typ"
 
-    // #appendix-separator
+    #appendix-separator
 
     #include "../figures/systolic-array/systolic-array.typ"
 
-    #appendix-separator
+    //#appendix-separator
 
     #include "../figures/mlp-packed/mlp-packed.typ"
 
     // #appendix-separator
-
+    #v(4em)
     == Evaluation (@sec:evaluation) <subsubsec:app-eval>
     #include "../figures/latency-vs-bram/latency-vs-bram.typ"
 

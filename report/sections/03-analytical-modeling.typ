@@ -23,7 +23,7 @@ We first define the key dimensions and symbols used in our analytical model in @
 The Vision Encoder processes raw camera inputs using a standard 12-layer Vision Transformer architecture. This component handles 1024 patches per image, treating each $32 times 32$ patch (derived from a $512 times 512$ image) as a token. The model employs a hidden size ($D$) of 768, with 12 heads and an MLP expansion factor of 4x (resulting in an intermediate dimension of 3072).
 
 *2. VLM Backbone (Vision-Language Model)*
-Fusing visual embeddings with text instructions, the VLM Backbone operates with a hidden size of 960. It employs Grouped Query Attention with 15 query heads and 5 key/value heads (head dimension of 64). It processes a total of 113 tokens per camera—significantly fewer than the encoder—comprising 64 visual tokens, 48 text instruction tokens, and a single robot state token. This goes through a process of early exit where it only utilizes 16 out of the 32 layers in the VLM backbone it is based on.
+Fusing visual embeddings with text instructions, the VLM Backbone operates with a hidden size of 960. It employs Grouped Query Attention with 15 query heads and 5 key/value heads (head dimension of 64). It processes a total of 113 tokens per camera, significantly fewer than the encoder, comprising 64 visual tokens, 48 text instruction tokens, and a single robot state token. This goes through a process of early exit where it only utilizes 16 out of the 32 layers in the VLM backbone it is based on.
 
 *3. Action Expert*
 The Action Expert generates control sequences via a conditional diffusion process (Flow Matching) over a prediction horizon of 50 action tokens. It executes 10 diffusion steps per inference using a 16-layer architecture that alternates between Self-Attention and Cross-Attention, where the latter attends to the VLM context. The model uses a hidden size of 720 (0.75x the VLM width) and employs Grouped Query Attention with 12 query heads and 4 key/value heads, each with a dimension of 80. The 50 Action Tokens interact with the 113 VLM Context Tokens through the Cross-Attention layers.
@@ -46,7 +46,7 @@ The computational Demands are summarized by the expected MACs per token for a si
 }
 
 *Methodology and Assumptions*:
-Our MACs calculation assumes per-image processing for the Vision Encoder with an input sequence length of $L=1024$ patches. For the VLM Backbone, we assume a single-camera mode with a sequence length of $L=113$ (compressed 1024 --> 64 visual tokens + 48 text tokens + 1 state token). The Action Expert is modeled with a prediction horizon of $L=50$ and 10 diffusion steps. Notably, we assume efficient KV reuse: the Cross-Attention Key/Value projections for the VLM context are computed only once per inference, while Query projections and Attention scores are computed at each diffusion step. The architecture uses Grouped Query Attention ($H_q=12, H_("kv")=4$) with a head dimension of $D_h=80$ (Action Expert).
+Our MACs calculation assumes per-image processing for the Vision Encoder with an input sequence length of $L=1024$ patches. For the VLM Backbone, we assume a single-camera mode with a sequence length of $L=113$ (compressed 1024 $arrow$ 64 visual tokens + 48 text tokens + 1 state token). The Action Expert is modeled with a prediction horizon of $L=50$ and 10 diffusion steps. Notably, we assume efficient KV reuse: the Cross-Attention Key/Value projections for the VLM context are computed only once per inference, while Query projections and Attention scores are computed at each diffusion step. The architecture uses Grouped Query Attention ($H_q=12, H_("kv")=4$) with a head dimension of $D_h=80$ (Action Expert).
 
 *Computational Demand Summary*
 
@@ -54,7 +54,7 @@ Based on the parameters derived from the codebase and the specific configuration
 
 We also calculated the total MACs breakdown in the vision encoder @tab:ops-breakdown to determine optimal resource allocation within the sub kernels.
 
-Crucially, for the *Action Expert*, we utilize a static optimization for the Cross-Attention layers: the Key and Value matrices for the VLM context are computed *once* per inference, as the context remains static across the 10 diffusion steps. Only the Query projections and the attention scores/updates are computed dynamically at each step. The Action Expert uses $H_q=12, H_("kv")=4, D_h=80$, while the VLM Backbone uses $H_q=15, H_("kv")=5, D_h=64$.
+Crucially, for the Action Expert, we utilize a static optimization for the Cross-Attention layers: the Key and Value matrices for the VLM context are computed once per inference, as the context remains static across the 10 diffusion steps. Only the Query projections and the attention scores/updates are computed dynamically at each step. The Action Expert uses $H_q=12, H_("kv")=4, D_h=80$, while the VLM Backbone uses $H_q=15, H_("kv")=5, D_h=64$.
 
 #if not use-appendix {
   include "../figures/analytical-modeling/macs-model-breakdown.typ"
