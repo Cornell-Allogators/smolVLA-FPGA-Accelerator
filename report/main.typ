@@ -10,6 +10,7 @@
   paper: "us-letter",
   margin: 0.8in,
   columns: 1,
+  numbering: "1",
 )
 
 #set par(
@@ -36,6 +37,9 @@
     #it.body
   ],
 )
+
+
+// page numbering bottom middle
 
 
 // --- 2. Title and Author Header ---
@@ -88,5 +92,7 @@
 #include "sections/06-discussion.typ"
 #include "sections/07-related-work.typ"
 #include "sections/08-conclusion.typ"
+#include "sections/09-appendix.typ"
 
+#pagebreak()
 #bibliography("refs.bib")

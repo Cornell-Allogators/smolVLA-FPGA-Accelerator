@@ -31,12 +31,17 @@ Since our FPGA implementation utilizes `int8` quantization to maximize throughpu
 
 The computational Demands are summarized by the expected MACs per token for a single Transformer layer. We distinguish between the Standard Multi-Head Attention (MHA) used in the Vision Encoder, and the Grouped Query Attention (GQA) used in the VLM Backbone and Action Expert.
 
-#include "../figures/analytical-modeling/dimensions.typ"
+#if not use-appendix {
+  include "../figures/analytical-modeling/dimensions.typ"
+}
 
+#if not use-appendix {
+  include "../figures/analytical-modeling/macs-gqa.typ"
+}
 
-#include "../figures/analytical-modeling/macs-gqa.typ"
-
-#include "../figures/analytical-modeling/macs-standard.typ"
+#if not use-appendix {
+  include "../figures/analytical-modeling/macs-standard.typ"
+}
 
 *Methodology and Assumptions*:
 Our MACs calculation assumes per-image processing for the Vision Encoder with an input sequence length of $L=1024$ patches. For the VLM Backbone, we assume a single-camera mode with a sequence length of $L=113$ (compressed 1024 --> 64 visual tokens + 48 text tokens + 1 state token). The Action Expert is modeled with a prediction horizon of $L=50$ and 10 diffusion steps. Notably, we assume efficient KV reuse: the Cross-Attention Key/Value projections for the VLM context are computed only once per inference, while Query projections and Attention scores are computed at each diffusion step. The architecture uses Grouped Query Attention ($H_q=12, H_("kv")=4$) with a head dimension of $D_h=80$ (Action Expert).
@@ -47,7 +52,10 @@ Based on the parameters derived from the codebase and the specific configuration
 
 Crucially, for the *Action Expert*, we utilize a static optimization for the Cross-Attention layers: the Key and Value matrices for the VLM context are computed *once* per inference, as the context remains static across the 10 diffusion steps. Only the Query projections and the attention scores/updates are computed dynamically at each step. The Action Expert uses $H_q=12, H_("kv")=4, D_h=80$, while the VLM Backbone uses $H_q=15, H_("kv")=5, D_h=64$.
 
-#include "../figures/analytical-modeling/macs-model-breakdown.typ"
+#if not use-appendix {
+  include "../figures/analytical-modeling/macs-model-breakdown.typ"
+}
+
 
 == Resource Constraints
 === Compute Resource Constraints
@@ -85,7 +93,9 @@ We analyze the storage requirements to determine where data must reside. The ori
 
 *Note on On-Chip Buffers*: To maximize throughput, we must hide the latency of HBM access by pre-fetching weights. Our analytical model estimates a requirement of approximately *4 MB* for partitioned activation buffers and *16 MB* for double-buffered weight storage (per layer), totaling an allocated budget of *\~20 MB*. This fits comfortably within the U280's available BRAM/URAM resources (\~43 MB).
 
-#include "../figures/analytical-modeling/mem-footprint.typ"
+#if not use-appendix {
+  include "../figures/analytical-modeling/mem-footprint.typ"
+}
 
 === Memory Port Constraints
 
@@ -107,7 +117,9 @@ To mitigate this, we heavily utilize Allo’s partition() scheduling primitive. 
 
 Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the large model size (approx. 382MB for weights), we assume a *layer-by-layer* execution model where weights must be streamed from HBM for each layer. For the Vision and VLM components, this means reading weights once per inference. However, for the *Action Expert*, the 10-step diffusion process requires re-streaming the dynamic weights 10 times, leading to a massive memory bandwidth demand.
 
-#include "../figures/analytical-modeling/mem-transfer.typ"
+#if not use-appendix {
+  include "../figures/analytical-modeling/mem-transfer.typ"
+}
 
 *Analysis*: The Action Expert accounts for over 80% of the total off-chip data transfer. With a realistic HBM bandwidth of \~300 GB/s, the memory transfer alone sets a hard lower bound on latency of approx. 4.6 ms ($937 / 300 " GB/s"$), not accounting for compute or latency hiding.
 
@@ -118,11 +130,15 @@ Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the
 
 To evaluate the feasibility of our design on the Alveo U280, we first calculate the Operational Intensity (OI) for each major component. As summarized in @tab:oi-analysis, the Vision Encoder, VLM Backbone, and Action Expert all exhibit high operational intensities.
 
-#include "../figures/analytical-modeling/oi-analysis.typ"
+#if not use-appendix {
+  include "../figures/analytical-modeling/oi-analysis.typ"
+}
 
 We visualize these characteristics against the hardware limits in the Roofline model shown in @fig:roofline.
 
-#include "../figures/roofline-analysis/roofline-analysis.typ"
+#if not use-appendix {
+  include "../figures/roofline-analysis/roofline-analysis.typ"
+}
 
 *Analysis*:
 The Roofline analysis reveals that all three components of SmolVLA sit well to the right of the U280's ridge point (\~11.8 Ops/Byte). This indicates that the design is fundamentally *compute-bound*, limited by the DSP processing power rather than HBM bandwidth. The *Vision Encoder* is extremely compute-bound (OI \~2048), suggesting that optimizing for DSP utilization (e.g., using systolic arrays) will yield direct performance gains. Similarly, the *Action Expert*, while having a lower OI (\~103) due to the requisite weight reloading for the diffusion process, remains in the compute-bound regime. However, it operates significantly closer to the memory wall; any inefficiency in the memory controller could easily shift this component into a bandwidth-bound regime.
