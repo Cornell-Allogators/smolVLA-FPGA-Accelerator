@@ -39,7 +39,37 @@ The general structure of our kernels follows a three-stage workflow:
 
 #include "../figures/per-head-loop/per-head-loop.typ"
 
-The Self-Attention mechanism is the computational bottleneck of the Vision Encoder. Our implementation targets the core equation: $"Attention"(Q, K, V) = "softmax"(Q K^T)/sqrt(d_k)V$. As illustrated in @fig:per-head-loop, we implement a dataflow architecture that processes attention heads in parallel. The pipeline begins with the QKV Precalculation, where the input embeddings are projected into Query, Key, and Value matrices. Due to the limited on-chip memory, we cannot store the full $Q K^T$ matrix. Instead, we compute the attention scores row-by-row in a streaming fashion.The most significant challenge in hardware is the Softmax function. Standard Softmax requires a global summation ($sum e^{x_i}$) across the entire row before any output can be normalized. This dependency naturally inhibits pipelining. To address this, we implement a streaming Softmax variant shown in Fig. 4. We maintain a running max and running sum as data flows through the pipeline5.
+The Self-Attention mechanism is about 50% of the vision encoder and can many times be the bottleneck of the Vision Encoder. Our implementation targets the core equation: $"Attention"(Q, K, V) = "softmax"(Q K^T)/sqrt(d_k)V$. Our design optimizes optimizes for a spatial architecture of a single head of self-attention instead of multi head parallelism. This is due to the limited on-chip memory of the Alveo U280 and the benefits of a dataflow through the softmax.
+
+Per head our flow goes as follows:
+
+dataflow(
+Full single head QKV production:
+
+dataflow(
+Multi-Row SDP:
+Row-wise SDP
+
+Row production between QK^T and max val calculation
+
+Row Overflow Subtraction
+
+Row Exponentiation
+
+Row Normalization
+
+Row Dot Product with V
+
+Row Output
+)
+
+)
+
+
+
+
+
+As illustrated in @fig:per-head-loop, we implement a dataflow architecture that processes attention heads in parallel. The pipeline begins with the QKV Precalculation, where the input embeddings are projected into Query, Key, and Value matrices. Due to the limited on-chip memory, we cannot store the full $Q K^T$ matrix. Instead, we compute the attention scores row-by-row in a streaming fashion.The most significant challenge in hardware is the Softmax function. Standard Softmax requires a global summation ($sum e^{x_i}$) across the entire row before any output can be normalized. This dependency naturally inhibits pipelining. To address this, we implement a streaming Softmax variant shown in Fig. 4. We maintain a running max and running sum as data flows through the pipeline5.
 
 #include "../figures/per-head-loop-with-ii/per-head-loop-with-ii.typ"
 
