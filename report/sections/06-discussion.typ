@@ -26,7 +26,10 @@ With a base latency of 80M cycles, our accelerator sustains approximately 50 ope
 
 When applying the dataflow we described earlier we reduce the latency to 66ms with only a 2% increase DSP utilization and 10% BRAM utilization. This is to be expected as a dataflow simply adds buffers between kernels to allow for an inter-kernel pipeline.
 
-Now using our row-wise parallelism we found that that the most efficient parallelism scheme was the SDP row factor of 4 and the QKV row factor of 2. This reduced our latency to \~24ms with 22% DSP and only 1% BRAM utilization increase.
+Now using our row-wise parallelism we found that that the most efficient parallelism scheme was the SDP row factor of 4 and the QKV row factor of 2. This reduced our latency to \~24ms with 22% DSP and only 1% BRAM utilization increase. It is important is also important to account for the fact that if we disregard the unmodifiable initial HBM $arrow$ BRAM transfer which can be overcome by effictevly hiding the latenccy of memory transfer with tile execution.
+
+A more accurate and expected achievable latency can actually be reduced to $\~16"ms"$ per attention layer and if the MLP produces the same latency then with a dataflow we achieve the $\~16"ms"$ per layers producing allowing us to achieve a throughput of $5 "FPS"$ through our vision encoder.
+
 
 == Performance of MLP
 
