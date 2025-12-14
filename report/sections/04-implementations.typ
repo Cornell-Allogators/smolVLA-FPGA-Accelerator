@@ -43,7 +43,9 @@ For computationally intensive operations like matrix multiplication, we also exp
 
 
 
-#include "../figures/per-head-loop/per-head-loop.typ"
+#if not use-appendix {
+  include "../figures/per-head-loop/per-head-loop.typ"
+}
 
 The Self-Attention mechanism is roughly 50% of the vision encoder and can often be the bottleneck. Our implementation targets the core equation: $"Attention"(Q, K, V) = "softmax"(Q K^T)/sqrt(d_k)V$. Our design optimizes for a spatial architecture of a single head of self-attention rather than exploiting multi-head parallelism. This design choice is driven by the limited on-chip memory of the Alveo U280 and the benefits of a dataflow architecture through the softmax.
 
@@ -82,7 +84,9 @@ Per head our flow goes as follows:
 
 As illustrated in @fig:per-head-loop, we implement a dataflow architecture that processes attention heads in parallel. The pipeline begins with the QKV Precalculation, where the input embeddings are projected into Query, Key, and Value matrices. Due to the limited on-chip memory, we cannot store the full $Q K^T$ matrix. Instead, we compute the attention scores row-by-row in a streaming fashion.
 
-#include "../figures/per-head-loop-with-ii/per-head-loop-with-ii.typ"
+#if not use-appendix {
+  include "../figures/per-head-loop-with-ii/per-head-loop-with-ii.typ"
+}
 
 The most significant challenge in hardware is the Softmax function. Standard Softmax requires a global summation ($sum e^(x_i)$) across the entire row before any output can be normalized. This dependency naturally inhibits pipelining. To address this, we implement a streaming Softmax variant shown in @fig:per-head-loop-with-ii. We maintain a running max and running sum as data flows through the pipeline. The dataflow diagram highlights our specific handling of the "Softmax Bottleneck." We compute $Q K^T$ and immediately scale the result. The Softmax sum reduction operates with an Initiation Interval (II) of 4. This higher II is necessary due to the floating-point accumulation latency in the reduction loop. Once the row sum is finalized, we normalize the scores and perform the final dot product with the Value ($V$) matrix. This pipelined approach allows us to initiate the computation of subsequent tokens while the current token is still finalizing its Softmax reduction, effectively hiding much of the latency.
 
@@ -99,12 +103,15 @@ The most significant challenge in hardware is the Softmax function. Standard Sof
 
 The MLP pipeline comprises a fully connected (FFN) layer followed by a Gaussian Error Linear Unit (GELU) non-linear activation function. We selected GELU over other common activation functions primarily for its smoothness and differentiability, which improve stability and information preservation in smaller models. The output is then passed to a second fully connected layer before entering the layer normalization stage.
 
-#include "../figures/mlp-layers/mlp-layers.typ"
+#if not use-appendix {
+  include "../figures/mlp-layers/mlp-layers.typ"
+}
 
 We compute the linear layer by multiplying input tensors with weight tensors and adding bias vectors. The primary challenge lies in the size of these tensors. Of the 9.6 billion MACs in the MLP, 99.6% are attributed to these two large matrix multiplications. In contrast, the \~8 billion MACs in the Self-Attention mechanism are distributed across 72 smaller matrix multiplications (12 heads $times$ 6 multiplications per head).
 
-#include "../figures/mlp-layer-math/mlp-layers-math.typ"
-
+#if not use-appendix {
+  include "../figures/mlp-layer-math/mlp-layers-math.typ"
+}
 
 === GELU
 
@@ -116,11 +123,16 @@ As a result, we approximate the GELU (Gaussian Error Linear Unit) using a hyperb
 Simpler approximations exist, such as the sigmoid approximation. $ "GELU"(x) approx x * sigma(1.702 * x) $However, we did not employ them as the MLP runtime is dominated by matrix multiplication. We did, however, experiment with replacing GELU with ReLU to isolate and test the matrix multiplications without activation function bottlenecks.
 
 === Systolic Arrays
-#include "../figures/systolic-array/systolic-array.typ"
+
+#if not use-appendix {
+  include "../figures/systolic-array/systolic-array.typ"
+}
 
 For the matrix multiplications, the standard way to execute these is by unrolling and pipelining the triple nested loop. We will also experiment with a systolic array based implementation. With this approach, data is injected into the edge processing elements, and then only moves between processing elements. This reduces the amount of data movement needed between the memory/buffers, helping increasing utilization of all of the DSPs on the FPGA.
 
-#include "../figures/mlp-packed/mlp-packed.typ"
+#if not use-appendix {
+  include "../figures/mlp-packed/mlp-packed.typ"
+}
 
 === Packing
 We also implemented weight and tensor packing. Since our weights and activations are 8-bit integers (`int8`), we can pack up to four values into a single 32-bit word. This optimization is crucial for BRAM data transfers, which typically operate on 32-bit words. Without packing, non-consecutive memory accesses could require up to four separate read cycles. Packing guarantees that we can move four weights per cycle. This creates a path for future optimizations using AXI for off-chip HBM transfers, where reducing the number of data beats per transaction alleviates memory bandwidth constraints.

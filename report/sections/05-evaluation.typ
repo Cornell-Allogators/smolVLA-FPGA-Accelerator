@@ -23,9 +23,13 @@ In terms of resource usage, this high-performance configuration is resource-heav
 
 Comparing this to our analytical modeling in Section 3, the Roofline model predicted a memory-bound lower limit of roughly 4.6 ms based on DRAM bandwidth. However, our analysis correctly identified that the attention layer would be *compute-bound* due to the $O(N^2)$ complexity of the attention map calculation. The measured 17.81 ms reflects this compute bottleneck, as well as the overhead of the Softmax dataflow which prevents full saturation of the memory bandwidth.
 
-#include "../figures/latency-vs-bram/latency-vs-bram.typ"
+#if not use-appendix {
+  include "../figures/latency-vs-bram/latency-vs-bram.typ"
+}
 
-#include "../figures/latency-vs-dsps/latency-vs-dsp.typ"
+#if not use-appendix {
+  include "../figures/latency-vs-dsps/latency-vs-dsp.typ"
+}
 
 === Ablation
 
@@ -44,7 +48,9 @@ As shown in the table:
 - *Tiling*: Applying loop tiling significantly reduced latency by improving data locality, but performance was still limited by the sequential execution of the QKV and SDP stages.
 - *Dataflow (Systolic)*: The most significant gain came from enabling the Dataflow architecture and increasing the parallelization factors (P-Factors). Moving to a streaming architecture (Dataflow: True) allowed us to overlap the QKV projection with the Softmax computation. Increasing the QKV P-Factor to 16 and SDP P-Factor to 8 reduced the latency to the final 17.81 ms, although this came at the cost of near-total DSP utilization. This confirms that spatial parallelism is critical for accelerating attention on FPGAs.
 
-#include "../figures/evaluation/attention-ablation.typ"
+#if not use-appendix {
+  include "../figures/evaluation/attention-ablation.typ"
+}
 
 /**********************************************************/
 
@@ -73,4 +79,6 @@ Table @tab:mlp-ablation shows that the 1x1 kernels have much higher latency desp
 
 
 
-#include "../figures/evaluation/mlp-ablation.typ"
+#if not use-appendix {
+  include "../figures/evaluation/mlp-ablation.typ"
+}
