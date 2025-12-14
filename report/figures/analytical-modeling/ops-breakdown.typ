@@ -53,5 +53,5 @@
     [*212.8*],
     [-],
   ),
-  caption: [Breakdown of Operations per Encoder Layer. Counts include both Multiplications and Additions (2 Ops per MAC).],
+  caption: [Breakdown of Operations per Encoder Layer. Counts include both Multiplications and Additions\ (2 Ops per MAC).],
 ) <tab:ops-breakdown>
