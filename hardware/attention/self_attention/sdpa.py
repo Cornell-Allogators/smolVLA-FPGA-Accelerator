@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from matrix_multiplies import mm_transpose, mm1, mm_transpose_return, mm1_return
-from attention.cross_attention.softmax import softmax_baseline, softmax_return
+from attention.self_attention.softmax import softmax_baseline, softmax_return
 
 
 def numpy_softmax(x, axis=-1):

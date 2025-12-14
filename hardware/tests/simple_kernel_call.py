@@ -15,14 +15,14 @@ from pathlib import Path
 
 # Make project modules importable regardless of current working directory
 root = Path(__file__).resolve().parents[2]
-hardware_build_dir = root / "hardware_build"
-cross_attention_dir = hardware_build_dir / "attention" / "cross_attention"
+hardware_build_dir = root / "hardware"
+cross_attention_dir = hardware_build_dir / "attention" / "self_attention"
 sys.path.insert(0, str(cross_attention_dir))
 sys.path.insert(0, str(hardware_build_dir))
 
 import allo
 from allo.ir.types import float32
-from attention.cross_attention import sdpa
+from attention.self_attention import sdpa
 
 # Try to import config
 try:

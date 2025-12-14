@@ -1,7 +1,7 @@
 #import "../../template/template.typ": *
 
 #figure(
-  caption: [Expected MACs for Grouped Query Attention Layer (GQA)],
+  caption: [Expected MACs for Grouped Query\ Attention Layer (GQA)],
   styled-table(
     columns: (auto, auto, auto),
     inset: 10pt,

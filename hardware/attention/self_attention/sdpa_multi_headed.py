@@ -7,7 +7,7 @@ import sys
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from matrix_multiplies import mm_transpose, mm1
 from attention.config import VLMAttentionConfig as VAC
-from attention.cross_attention.softmax import softmax_baseline
+from attention.self_attention.softmax import softmax_baseline
 
 #Test to see if we can easily pass in a tile of a matrix into a matrix multiplication
 

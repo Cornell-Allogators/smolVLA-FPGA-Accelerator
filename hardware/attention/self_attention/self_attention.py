@@ -4,10 +4,11 @@ from allo.ir.types import float32, bfloat16, int32, int16, int8, int4, int64, In
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[2]))
+sys.path.append(str(Path(__file__).resolve().parents[3] / "submodules" / "allo"))
 from matrix_multiplies import mm_transpose, mm1, mm_transpose_return, mm1_return
-from attention.cross_attention.softmax import softmax_baseline, softmax_return
-from attention.cross_attention.sdpa import sdpa_streaming_8row as sdpa
-from attention.cross_attention.sdpa_dataflow_scheduler import schedule_sdpa_streaming_4row_parallel as sdpa_schedule
+from attention.self_attention.softmax import softmax_baseline, softmax_return
+from attention.self_attention.sdpa import sdpa_streaming_8row as sdpa
+from attention.self_attention.sdpa_dataflow_scheduler import schedule_sdpa_streaming_4row_parallel as sdpa_schedule
 from allo.customize import Partition as partition
 
 

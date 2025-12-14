@@ -1,4 +1,4 @@
-#cross attention configuration
+# self attention configuration
 # runtime / scheduling
 
 class CrossAttentionConfig:

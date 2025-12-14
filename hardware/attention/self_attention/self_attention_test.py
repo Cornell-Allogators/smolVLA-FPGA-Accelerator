@@ -14,7 +14,8 @@ import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
-from attention.cross_attention.self_attention import self_attention
+sys.path.append(str(Path(__file__).resolve().parents[3] / "submodules" / "allo"))
+from attention.self_attention.self_attention import self_attention
 
 
 def pytorch_int8_attention(
