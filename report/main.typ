@@ -14,7 +14,7 @@
 
 #set par(
   justify: true,
-  leading: 0.6em,
+  leading: 0.45em,
 )
 
 #set heading(numbering: "1.1.")
@@ -27,13 +27,14 @@
 })
 
 #show figure.caption: it => box(
-  width: 90%, context [
-    #set align(left)
+  width: 90%,
+  context [
+    #set align(center)
     #it.supplement
     #it.counter.display()
     #it.separator
     #it.body
-  ]
+  ],
 )
 
 

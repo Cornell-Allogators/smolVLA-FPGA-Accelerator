@@ -75,9 +75,9 @@ Another technique we use is mapping our MAC operations to DSP slices, which are 
 
 *Memory Footprint Analysis*
 
-We analyze the storage requirements to determine where data must reside. The original model weights in `bfloat16` precision occupy approx. 764 MB. By quantizing to `int8`, we reduce the total model footprint to *382 MB*. This still exceeds the U280's on-chip capacity (~40-50 MB), mandating off-chip HBM storage.
+We analyze the storage requirements to determine where data must reside. The original model weights in `bfloat16` precision occupy approx. 764 MB. By quantizing to `int8`, we reduce the total model footprint to *382 MB*. This still exceeds the U280's on-chip capacity (\~40-50 MB), mandating off-chip HBM storage.
 
-*Note on On-Chip Buffers*: To maximize throughput, we must hide the latency of HBM access by pre-fetching weights. Our analytical model estimates a requirement of approximately *4 MB* for partitioned activation buffers and *16 MB* for double-buffered weight storage (per layer), totaling an allocated budget of *~20 MB*. This fits comfortably within the U280's available BRAM/URAM resources (~43 MB).
+*Note on On-Chip Buffers*: To maximize throughput, we must hide the latency of HBM access by pre-fetching weights. Our analytical model estimates a requirement of approximately *4 MB* for partitioned activation buffers and *16 MB* for double-buffered weight storage (per layer), totaling an allocated budget of *\~20 MB*. This fits comfortably within the U280's available BRAM/URAM resources (\~43 MB).
 
 #include "../figures/analytical-modeling/mem-footprint.typ"
 

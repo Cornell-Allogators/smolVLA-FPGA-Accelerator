@@ -8,7 +8,9 @@
 
 == Allo Kernels
 
-#todo(Ezra, done: 50%)[
+== Allo Kernels
+
+#todo(Ezra, done: 100%)[
   *General Kernel Structure*:
   - Explain how kernels are defined in Allo.
   - Discuss common optimization patterns applied (tiling from `schedule` functions in `matrix_multiplies.py`).
@@ -19,17 +21,19 @@ Our accelerator implementation leverages Allo to decouple the functional definit
 
 The general structure of our kernels follows a three-stage workflow:
 
-*Definition:* We define the compute logic (e.g., matrix multiplications, element-wise ops) using high-level primitives.
+*1. Definition:* We define the compute logic (e.g., matrix multiplications, element-wise ops) using high-level primitives. This stage focuses purely on the algorithm's correctness without worrying about hardware details.
 
-*Scheduling:* We apply a separate scheduling pass where we inject hardware-specific optimizations. This includes `s.pipeline()` to enable instruction-level parallelism and `s.partition()` to break down memory dependencies.
+*2. Scheduling:* We apply a separate scheduling pass where we inject hardware-specific optimizations. This includes `s.pipeline()` to enable instruction-level parallelism and `s.partition()` to break down memory dependencies. A key optimization we apply is *tiling* (or blocking), which breaks large matrix operations into smaller chunks that fit into the on-chip BRAM, maximizing data reuse and minimizing off-chip memory access.
 
-*Build:* The Allo backend lowers this representation to HLS C++ and subsequently generates the bitstream for the Alveo U280.
+*3. Build:* The Allo backend lowers this representation to HLS C++ and subsequently generates the bitstream for the Alveo U280.
+
+For computationally intensive operations like matrix multiplication, we also explore *systolic array* implementations (as visualized in @fig:systolic-array in Section 4.3). This structured arrangement of processing elements minimizes global data movement, allowing us to achieve high frequency and DSP efficiency.
 
 /**********************************************************/
 
 == Accelerating Attention Layers
 
-#todo(Ezra, done: 50%)[
+#todo(Ezra, done: 100%)[
   *Attention Implementation*:
   - Detail `hardware_build/attention/self_attention`.
   - Explain the Q, K, V matrix multiplication chain.
@@ -43,33 +47,38 @@ The Self-Attention mechanism is about 50% of the vision encoder and can many tim
 
 Per head our flow goes as follows:
 
-dataflow(
-Full single head QKV production:
-
-dataflow(
-Multi-Row SDP:
-Row-wise SDP
-
-Row production between QK^T and max val calculation
-
-Row Overflow Subtraction
-
-Row Exponentiation
-
-Row Normalization
-
-Row Dot Product with V
-
-Row Output
+#figure(
+  align(center + horizon)[
+    #stack(
+      dir: ltr,
+      spacing: 2em,
+      box(stroke: 1pt, inset: 4pt)[
+        *QKV Production* \ (Single Head)
+      ],
+      $arrow.r$,
+      box(stroke: 1pt, inset: 4pt)[
+        #stack(
+          dir: ltr,
+          spacing: 2em,
+          box(stroke: 0.5pt, inset: 4pt)[
+            *Multi-Row SDP* \ (Attention Scores)
+          ],
+          $arrow.r$,
+          box(stroke: 0.5pt, inset: 4pt)[
+            *Softmax* \ (Streaming)
+          ],
+          $arrow.r$,
+          box(stroke: 0.5pt, inset: 4pt)[
+            *Context* \ (Row Dot Product)
+          ],
+        )
+      ],
+    )
+  ],
+  caption: [High-level Dataflow for Self-Attention Head],
 )
 
-)
-
-
-
-
-
-As illustrated in @fig:per-head-loop, we implement a dataflow architecture that processes attention heads in parallel. The pipeline begins with the QKV Precalculation, where the input embeddings are projected into Query, Key, and Value matrices. Due to the limited on-chip memory, we cannot store the full $Q K^T$ matrix. Instead, we compute the attention scores row-by-row in a streaming fashion.The most significant challenge in hardware is the Softmax function. Standard Softmax requires a global summation ($sum e^(x_i)$) across the entire row before any output can be normalized. This dependency naturally inhibits pipelining. To address this, we implement a streaming Softmax variant shown in @fig:per-head-loop-with-ii. We maintain a running max and running sum as data flows through the pipeline5.
+As illustrated in @fig:per-head-loop, we implement a dataflow architecture that processes attention heads in parallel. The pipeline begins with the QKV Precalculation, where the input embeddings are projected into Query, Key, and Value matrices. Due to the limited on-chip memory, we cannot store the full $Q K^T$ matrix. Instead, we compute the attention scores row-by-row in a streaming fashion.
 
 #include "../figures/per-head-loop-with-ii/per-head-loop-with-ii.typ"
 
