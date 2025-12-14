@@ -18,11 +18,24 @@
 )
 
 #set heading(numbering: "1.1.")
-#set figure(supplement: "Fig.")
+#set figure(supplement: it => {
+  if it.func() == table {
+    "Tab."
+  } else {
+    "Fig."
+  }
+})
 
-#show figure.caption: it => box(width: 90%, context [
-  #it.supplement #it.counter.display()#it.separator#it.body
-])
+#show figure.caption: it => box(
+  width: 90%, context [
+    #set align(left)
+    #it.supplement
+    #it.counter.display()
+    #it.separator
+    #it.body
+  ]
+)
+
 
 // --- 2. Title and Author Header ---
 #align(center)[
@@ -34,22 +47,22 @@
     columns: (1fr, 1fr, 1fr, 1fr),
     gutter: 1em,
     [
-      *Sam*\
+      *#Sam*\
       Attention Layer\
       #link("mailto:srb343@cornell.edu")
     ],
     [
-      *Ezra*\
+      *#Ezra*\
       Attention Layer\
       #link("mailto:er495@cornell.edu")
     ],
     [
-      *Stanley*\
+      *#Stanley*\
       MLP Layer\
       #link("mailto:ss3679@cornell.edu")
     ],
     [
-      *Isabella*\
+      *#Isabella*\
       MLP Layer\
       #link("mailto:isf9@cornell.edu")
     ],

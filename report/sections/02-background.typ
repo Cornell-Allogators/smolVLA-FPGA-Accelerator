@@ -54,6 +54,9 @@ The VLM component of SmolVLA handles semantic scene understanding. It tokenizes 
 
 The Vision Encoder is the primary focus of this acceleration effort. The visual front-end employs a Vision Transformer (ViT) to extract features from the camera inputs. These features are projected into the same embedding dimension as the text tokens, allowing the VLM to perform cross-modal reasoning.
 
+#include "../figures/model-overview/model-overview.typ"
+
+
 /**********************************************************/
 
 == Allo

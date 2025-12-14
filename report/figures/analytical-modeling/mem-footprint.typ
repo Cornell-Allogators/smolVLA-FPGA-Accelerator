@@ -1,7 +1,7 @@
 #import "../../template/template.typ": *
 
 #figure(
-  caption: [Memory Footprint Requirements (Storage)],
+  caption: [Memory Footprint Requirements (Storage). *TODO: Justify these calcs and see if we followed this*], 
   styled-table(
     columns: 3,
     table.header([*Metric*], [*Size*], [*Placement*]),
