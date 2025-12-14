@@ -49,7 +49,7 @@
     table.cell(colspan: 2)[*Total per Layer*],
     [*17.74*],
     [*100%*],
-    table.cell(colspan: 2)[*Total Vision Encoder (12 Layers)*],
+    table.cell(colspan: 2)[*Total Vision Encoder\ (12 Layers)*],
     [*212.8*],
     [-],
   ),
