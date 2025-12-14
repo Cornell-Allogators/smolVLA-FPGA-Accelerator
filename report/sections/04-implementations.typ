@@ -8,8 +8,6 @@
 
 == Allo Kernels
 
-== Allo Kernels
-
 #todo(Ezra, done: 100%)[
   *General Kernel Structure*:
   - Explain how kernels are defined in Allo.
