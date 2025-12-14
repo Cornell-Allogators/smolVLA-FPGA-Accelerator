@@ -50,7 +50,12 @@ As shown in the table:
 
 #if not use-appendix {
   include "../figures/evaluation/attention-ablation.typ"
+} else {
+  [
+    Please see @tab:attention-ablation in the appendix for the attention ablation study.
+  ]
 }
+
 
 /**********************************************************/
 
@@ -76,9 +81,10 @@ Table @tab:mlp-ablation shows that the 1x1 kernels have much higher latency desp
   - Show progression of optimizations for MLP.
 ]
 
-
-
-
 #if not use-appendix {
   include "../figures/evaluation/mlp-ablation.typ"
+} else {
+  [
+    Please see @tab:mlp-ablation in the appendix for the MLP ablation study.
+  ]
 }
