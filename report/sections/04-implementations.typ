@@ -50,37 +50,33 @@ For computationally intensive operations like matrix multiplication, we also exp
 The Self-Attention mechanism is roughly 50% of the vision encoder and can often be the bottleneck. Our implementation targets the core equation: $"Attention"(Q, K, V) = "softmax"(Q K^T)/sqrt(d_k)V$. Our design optimizes for a spatial architecture of a single head of self-attention rather than exploiting multi-head parallelism. This design choice is driven by the limited on-chip memory of the Alveo U280 and the benefits of a dataflow architecture through the softmax.
 
 Per head our flow goes as follows:
-
-#figure(
-  align(center + horizon)[
-    #stack(
-      dir: ltr,
-      spacing: 2em,
-      box(stroke: 1pt, inset: 4pt)[
-        *QKV Production* \ (Single Head)
-      ],
-      $arrow.r$,
-      box(stroke: 1pt, inset: 4pt)[
-        #stack(
-          dir: ltr,
-          spacing: 2em,
-          box(stroke: 0.5pt, inset: 4pt)[
-            *Multi-Row SDP* \ (Attention Scores)
-          ],
-          $arrow.r$,
-          box(stroke: 0.5pt, inset: 4pt)[
-            *Softmax* \ (Streaming)
-          ],
-          $arrow.r$,
-          box(stroke: 0.5pt, inset: 4pt)[
-            *Context* \ (Row Dot Product)
-          ],
-        )
-      ],
-    )
-  ],
-  caption: [High-level Dataflow for Self-Attention Head],
-)
+#align(center + horizon)[
+  #stack(
+    dir: ltr,
+    spacing: 2em,
+    box(stroke: 1pt, inset: 4pt)[
+      *QKV Production* \ (Single Head)
+    ],
+    $arrow.r$,
+    box(stroke: 1pt, inset: 4pt)[
+      #stack(
+        dir: ltr,
+        spacing: 2em,
+        box(stroke: 0.5pt, inset: 4pt)[
+          *Multi-Row SDP* \ (Attention Scores)
+        ],
+        $arrow.r$,
+        box(stroke: 0.5pt, inset: 4pt)[
+          *Softmax* \ (Streaming)
+        ],
+        $arrow.r$,
+        box(stroke: 0.5pt, inset: 4pt)[
+          *Context* \ (Row Dot Product)
+        ],
+      )
+    ],
+  )
+]
 
 As illustrated in @fig:per-head-loop, we implement a dataflow architecture that processes attention heads in parallel. The pipeline begins with the QKV Precalculation, where the input embeddings are projected into Query, Key, and Value matrices. Due to the limited on-chip memory, we cannot store the full $Q K^T$ matrix. Instead, we compute the attention scores row-by-row in a streaming fashion.
 
