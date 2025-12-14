@@ -2,7 +2,7 @@
 
 /**********************************************************/
 
-= Analytical Modeling Framework
+= Analytical Modeling Framework <sec:modeling>
 
 #todo(Ezra, done: 99%)[
   *Framework Overview*:
@@ -15,7 +15,9 @@
 /**********************************************************/
 
 
-== Computational Demands
+== Computational Demands <subsec:compute-demands>
+
+We first define the key dimensions and symbols used in our analytical model in @tab:dimensions.
 
 *1. Vision Encoder (ViT)*
 The Vision Encoder processes raw camera inputs using a standard 12-layer Vision Transformer architecture. This component handles 1024 patches per image, treating each $32 times 32$ patch (derived from a $512 times 512$ image) as a token. The model employs a hidden size ($D$) of 768, with 12 heads and an MLP expansion factor of 4x (resulting in an intermediate dimension of 3072).
@@ -29,7 +31,7 @@ The Action Expert generates control sequences via a conditional diffusion proces
 *Compute Analysis*
 Since our FPGA implementation utilizes `int8` quantization to maximize throughput on DSP slices, we quantify computational complexity in terms of Multiply-Accumulate operations (MACs) rather than FLOPs. A single MAC corresponds to one multiplication and one addition (effectively 2 ops if counting FLOPs).
 
-The computational Demands are summarized by the expected MACs per token for a single Transformer layer. We distinguish between the Standard Multi-Head Attention (MHA) used in the Vision Encoder, and the Grouped Query Attention (GQA) used in the VLM Backbone and Action Expert.
+The computational Demands are summarized by the expected MACs per token for a single Transformer layer. We distinguish between the Standard Multi-Head Attention (MHA) used in the Vision Encoder (detailed in @tab:macs-standard), and the Grouped Query Attention (GQA) used in the VLM Backbone and Action Expert (detailed in @tab:macs-gqa).
 
 #if not use-appendix {
   include "../figures/analytical-modeling/dimensions.typ"
@@ -48,7 +50,7 @@ Our MACs calculation assumes per-image processing for the Vision Encoder with an
 
 *Computational Demand Summary*
 
-Based on the parameters derived from the codebase and the specific configuration for this deployment (Single Camera, 113 VLM tokens), we calculate the total Multiply-Accumulate (MAC) operations per inference.
+Based on the parameters derived from the codebase and the specific configuration for this deployment (Single Camera, 113 VLM tokens), we calculate the total Multiply-Accumulate (MAC) operations per inference, as shown in @tab:macs-breakdown.
 
 Crucially, for the *Action Expert*, we utilize a static optimization for the Cross-Attention layers: the Key and Value matrices for the VLM context are computed *once* per inference, as the context remains static across the 10 diffusion steps. Only the Query projections and the attention scores/updates are computed dynamically at each step. The Action Expert uses $H_q=12, H_("kv")=4, D_h=80$, while the VLM Backbone uses $H_q=15, H_("kv")=5, D_h=64$.
 
@@ -57,8 +59,8 @@ Crucially, for the *Action Expert*, we utilize a static optimization for the Cro
 }
 
 
-== Resource Constraints
-=== Compute Resource Constraints
+== Resource Constraints <subsec:resource-constraints>
+=== Compute Resource Constraints <subsubsec:compute-constraints>
 
 #todo(Stanley, done: 100%)[
   *DSP/Logic Constraints*:
@@ -76,7 +78,7 @@ Another technique we use is mapping our MAC operations to DSP slices, which are 
 
 
 
-=== Memory Capacity Constraints
+=== Memory Capacity Constraints <subsubsec:mem-capacity>
 
 #todo(Ezra, done: 99%)[
   *On-chip Memory*:
@@ -91,13 +93,13 @@ Another technique we use is mapping our MAC operations to DSP slices, which are 
 
 We analyze the storage requirements to determine where data must reside. The original model weights in `bfloat16` precision occupy approx. 764 MB. By quantizing to `int8`, we reduce the total model footprint to *382 MB*. This still exceeds the U280's on-chip capacity (\~40-50 MB), mandating off-chip HBM storage.
 
-*Note on On-Chip Buffers*: To maximize throughput, we must hide the latency of HBM access by pre-fetching weights. Our analytical model estimates a requirement of approximately *4 MB* for partitioned activation buffers and *16 MB* for double-buffered weight storage (per layer), totaling an allocated budget of *\~20 MB*. This fits comfortably within the U280's available BRAM/URAM resources (\~43 MB).
+*Note on On-Chip Buffers*: To maximize throughput, we must hide the latency of HBM access by pre-fetching weights. Our analytical model estimates a requirement of approximately *4 MB* for partitioned activation buffers and *16 MB* for double-buffered weight storage (per layer), totaling an allocated budget of *\~20 MB*, as detailed in @tab:mem-footprint. This fits comfortably within the U280's available BRAM/URAM resources (\~43 MB).
 
 #if not use-appendix {
   include "../figures/analytical-modeling/mem-footprint.typ"
 }
 
-=== Memory Port Constraints
+=== Memory Port Constraints <subsubsec:mem-ports>
 
 #todo(Ezra, done: 90%)[
   *Port/Bank Conflicts*:
@@ -111,7 +113,7 @@ Port/Bank Conflicts: While High Bandwidth Memory (HBM) offers massive theoretica
 
 To mitigate this, we heavily utilize Allo’s partition() scheduling primitive. By applying array partitioning, specifically cyclic and block partitioning, we split large tensors across multiple physical memory banks. This ensures that when the HLS compiler unrolls a loop (e.g., processing 4 elements of a vector simultaneously), each access maps to a distinct physical port, allowing for conflict-free parallel reads and writes. Without this partitioning, the effective bandwidth would be throttled by the limited number of read/write ports (typically two) per memory block, nullifying the benefits of our spatial architecture.
 
-=== Memory Bandwidth Constraints
+=== Memory Bandwidth Constraints <subsubsec:mem-bw>
 
 *Theoretical Data Transfer Analysis*
 
@@ -121,12 +123,12 @@ Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the
   include "../figures/analytical-modeling/mem-transfer.typ"
 }
 
-*Analysis*: The Action Expert accounts for over 80% of the total off-chip data transfer. With a realistic HBM bandwidth of \~300 GB/s, the memory transfer alone sets a hard lower bound on latency of approx. 4.6 ms ($937 / 300 " GB/s"$), not accounting for compute or latency hiding.
+*Analysis*: As shown in @tab:mem-transfer, the Action Expert accounts for over 80% of the total off-chip data transfer. With a realistic HBM bandwidth of \~300 GB/s, the memory transfer alone sets a hard lower bound on latency of approx. 4.6 ms ($937 / 300 " GB/s"$), not accounting for compute or latency hiding.
 
 
 /**********************************************************/
 
-== Performance Estimation
+== Performance Estimation <subsec:perf-estimation>
 
 To evaluate the feasibility of our design on the Alveo U280, we first calculate the Operational Intensity (OI) for each major component. As summarized in @tab:oi-analysis, the Vision Encoder, VLM Backbone, and Action Expert all exhibit high operational intensities.
 

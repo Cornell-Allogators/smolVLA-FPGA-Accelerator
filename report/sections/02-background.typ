@@ -2,11 +2,11 @@
 
 /**********************************************************/
 
-= Background
+= Background <sec:background>
 
 /**********************************************************/
 
-== SmolVLA
+== SmolVLA <subsec:smolvla>
 
 #todo(Sam, done: 100%)[
   *General Overview*: Explain the SmolVLA architecture.
@@ -21,7 +21,7 @@ SmolVLA is a novel Vision-Language-Action architecture designed to bridge the ga
 The VLM processes the visual observations (from up to 3 cameras) and the user's natural language instruction to produce a high-level plan or "thought." This semantic representation is then fed into the Action Expert, which acts as a conditional diffusion policy to generate the sequence of joint actions required to execute the task.
 
 
-=== Action Expert
+=== Action Expert <subsubsec:action-expert>
 
 #todo(Ezra, done: 100%)[
   *Action Expert Details*:
@@ -36,7 +36,7 @@ The Action Expert operates on a sequence of standard Transformer blocks but is o
 The computational core consists of Cross-Attention layers, where query tokens (representing the robot's action plan) attend to the context provided by VLM embeddings, followed by MLP layers for feed-forward processing. The model uses a 10-step flow-matching solver to refine the action trajectory.
 
 
-=== Large Language Model
+=== Large Language Model <subsubsec:llm>
 
 #todo(Ezra, done: 100%)[
   *LLM Component*:
@@ -50,7 +50,7 @@ The computational core consists of Cross-Attention layers, where query tokens (r
 The VLM component of SmolVLA handles semantic scene understanding. It tokenizes input text and visual patches (64 tokens per frame) into a unified embedding space. The Language Model backbone within the VLM accounts for the largest parameter count in the entire architecture.
 
 
-=== Vision Transformer Model
+=== Vision Transformer Model <subsubsec:vit>
 
 #todo(Sam, done: 100%)[
   *ViT Details*:
@@ -60,7 +60,7 @@ The VLM component of SmolVLA handles semantic scene understanding. It tokenizes 
 
 
 
-The Vision Encoder is the primary focus of this acceleration effort. The visual front-end employs a Vision Transformer (ViT) to extract features from the camera inputs. These features are projected into the same embedding dimension as the text tokens, allowing the VLM to perform cross-modal reasoning.
+The Vision Encoder is the primary focus of this acceleration effort. The visual front-end employs a Vision Transformer (ViT) to extract features from the camera inputs. These features are projected into the same embedding dimension as the text tokens, allowing the VLM to perform cross-modal reasoning, as shown in @fig:model-overview.
 
 #if not use-appendix {
   include "../figures/model-overview/model-overview.typ"
@@ -68,7 +68,7 @@ The Vision Encoder is the primary focus of this acceleration effort. The visual 
 
 /**********************************************************/
 
-== Allo
+== Allo <subsec:allo>
 
 #todo(Stanley, done: 100%)[
   *Allo Framework*:
@@ -85,9 +85,9 @@ A key feature of Allo utilized in this project is *Composable Transformations*, 
 
 /**********************************************************/
 
-== Parallelization Schemes
+== Parallelization Schemes <subsec:parallelization>
 
-=== Spatial Architectures
+=== Spatial Architectures <subsubsec:spatial>
 
 #todo(Ezra, done: 100%)[
   *Spatial Dataflow*:
@@ -98,7 +98,7 @@ A key feature of Allo utilized in this project is *Composable Transformations*, 
 
 Spatial architectures, such as Systolic Arrays, are a natural fit for the dense matrix multiplications (GEMMs) found in Transformer attention and MLP layers. When working with memory-bound kernels, it is extremely important to utilize FIFO streaming between PEs to avoid off-chip HBM access. We utilized a spatial dataflow architecture.
 
-=== Temporal Architectures
+=== Temporal Architectures <subsubsec:temporal>
 
 #todo(Ezra, done: 100%)[
   *Temporal Execution*:

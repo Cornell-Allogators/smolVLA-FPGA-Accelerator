@@ -2,11 +2,11 @@
 
 /**********************************************************/
 
-= Implementations
+= Implementations <sec:implementations>
 
 /**********************************************************/
 
-== Allo Kernels
+== Allo Kernels <subsec:allo-kernels>
 
 #todo(Ezra, done: 100%)[
   *General Kernel Structure*:
@@ -31,7 +31,7 @@ For computationally intensive operations like matrix multiplication, we also exp
 
 /**********************************************************/
 
-== Accelerating Attention Layers
+== Accelerating Attention Layers <subsec:attn-impl>
 
 #todo(Ezra, done: 100%)[
   *Attention Implementation*:
@@ -88,7 +88,7 @@ The most significant challenge in hardware is the Softmax function. Standard Sof
 
 /**********************************************************/
 
-== Accelerating MLP Layers
+== Accelerating MLP Layers <subsec:mlp-impl>
 
 #todo(Stanley, done: 100%)[
   *MLP Implementation*:
@@ -97,19 +97,19 @@ The most significant challenge in hardware is the Softmax function. Standard Sof
 
 
 
-The MLP pipeline comprises a fully connected (FFN) layer followed by a Gaussian Error Linear Unit (GELU) non-linear activation function. We selected GELU over other common activation functions primarily for its smoothness and differentiability, which improve stability and information preservation in smaller models. The output is then passed to a second fully connected layer before entering the layer normalization stage.
+The MLP pipeline comprises a fully connected (FFN) layer followed by a Gaussian Error Linear Unit (GELU) non-linear activation function. We selected GELU over other common activation functions primarily for its smoothness and differentiability, which improve stability and information preservation in smaller models. The output is then passed to a second fully connected layer before entering the layer normalization stage. The high-level dataflow is illustrated in @fig:mlp-layers.
 
 #if not use-appendix {
   include "../figures/mlp-layers/mlp-layers.typ"
 }
 
-We compute the linear layer by multiplying input tensors with weight tensors and adding bias vectors. The primary challenge lies in the size of these tensors. Of the 9.6 billion MACs in the MLP, 99.6% are attributed to these two large matrix multiplications. In contrast, the \~8 billion MACs in the Self-Attention mechanism are distributed across 72 smaller matrix multiplications (12 heads $times$ 6 multiplications per head).
+We compute the linear layer by multiplying input tensors with weight tensors and adding bias vectors, as broken down in @fig:mlp-math. The primary challenge lies in the size of these tensors. Of the 9.6 billion MACs in the MLP, 99.6% are attributed to these two large matrix multiplications. In contrast, the \~8 billion MACs in the Self-Attention mechanism are distributed across 72 smaller matrix multiplications (12 heads $times$ 6 multiplications per head).
 
 #if not use-appendix {
   include "../figures/mlp-layer-math/mlp-layers-math.typ"
 }
 
-=== GELU
+=== GELU <subsubsec:gelu>
 
 $ "GELU"(x) = x dot ( 1/2 + 1/2 "erf"(sqrt(1/2)x)) $
 
@@ -118,7 +118,7 @@ As a result, we approximate the GELU (Gaussian Error Linear Unit) using a hyperb
 
 Simpler approximations exist, such as the sigmoid approximation. $ "GELU"(x) approx x * sigma(1.702 * x) $However, we did not employ them as the MLP runtime is dominated by matrix multiplication. We did, however, experiment with replacing GELU with ReLU to isolate and test the matrix multiplications without activation function bottlenecks.
 
-=== Systolic Arrays
+=== Systolic Arrays <subsubsec:systolic>
 
 #if not use-appendix {
   include "../figures/systolic-array/systolic-array.typ"
@@ -130,6 +130,6 @@ For the matrix multiplications, the standard way to execute these is by unrollin
   include "../figures/mlp-packed/mlp-packed.typ"
 }
 
-=== Packing
-We also implemented weight and tensor packing. Since our weights and activations are 8-bit integers (`int8`), we can pack up to four values into a single 32-bit word. This optimization is crucial for BRAM data transfers, which typically operate on 32-bit words. Without packing, non-consecutive memory accesses could require up to four separate read cycles. Packing guarantees that we can move four weights per cycle. This creates a path for future optimizations using AXI for off-chip HBM transfers, where reducing the number of data beats per transaction alleviates memory bandwidth constraints.
+=== Packing <subsubsec:packing>
+We also implemented weight and tensor packing, visualized in @fig:mlp-packed. Since our weights and activations are 8-bit integers (`int8`), we can pack up to four values into a single 32-bit word. This optimization is crucial for BRAM data transfers, which typically operate on 32-bit words. Without packing, non-consecutive memory accesses could require up to four separate read cycles. Packing guarantees that we can move four weights per cycle. This creates a path for future optimizations using AXI for off-chip HBM transfers, where reducing the number of data beats per transaction alleviates memory bandwidth constraints.
 

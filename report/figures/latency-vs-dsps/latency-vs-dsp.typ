@@ -6,4 +6,4 @@
     "latency_vs_dsp.svg",
     width: 60%,
   ),
-)
+) <fig:latency-vs-dsp>

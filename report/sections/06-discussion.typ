@@ -2,7 +2,7 @@
 
 /**********************************************************/
 
-= Discussion
+= Discussion <sec:discussion>
 
 #todo(Ezra, done: 40%)[
   *Synthesis of Results*:
@@ -11,7 +11,7 @@
 ]
 When designing our kernels one of the limiting factors was lack of HBM control in Allo as well as $"wrap_io = False"$ not being supported and we had to automatically load kernel inputs into BRAM before starting computation.
 
-== Performance of Attention
+== Performance of Attention <subsec:attn-perf>
 
 #todo(Ezra, done: 0%)[
   *Attention Insights*:
@@ -31,7 +31,7 @@ Now using our row-wise parallelism we found that that the most efficient paralle
 A more accurate and expected achievable latency can actually be reduced to $\~16"ms"$ per attention layer and if the MLP produces the same latency then with a dataflow we achieve the $\~16"ms"$ per layers producing allowing us to achieve a throughput of $5 "FPS"$ through our vision encoder.
 
 
-== Performance of MLP
+== Performance of MLP <subsec:mlp-perf>
 
 #todo(Stanley, done: 99%)[
   *MLP Insights*:
@@ -48,7 +48,7 @@ To address this, we implemented tiling, exploiting temporal reuse and dataflow c
 
 The main contributors to the latency for the MLP are the two fully connected layers, FC1 and FC2, as they account for the majority of the MAC operations. It can be noted that latency will scale approximately linearly with batch size regardless of these optimizations if resource utilization is held constant. To maintain the same latency for larger batch size, resource utilization will scale somewhat linearly.
 
-== Fused Kernel Performance
+== Fused Kernel Performance <subsec:fused-perf>
 
 #todo(Ezra, done: 0%)[
   *Future Work/Fusion*:
