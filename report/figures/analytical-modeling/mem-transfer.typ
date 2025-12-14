@@ -1,7 +1,7 @@
 #import "../../template/template.typ": *
 
 #figure(
-  caption: [Minimum Off-Chip Memory Transfer Per Inference (INT8)],
+  caption: [Minimum Off-Chip Memory\ Transfer Per Inference (INT8)],
   styled-table(
     columns: 3,
     table.header([*Component*], [*Transfer (MB)*], [*Notes*]),

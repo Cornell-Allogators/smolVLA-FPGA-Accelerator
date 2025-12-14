@@ -1,7 +1,7 @@
 #import "../../template/template.typ": *
 
 #figure(
-  caption: [Summary of Analytical Model Dimensions and Symbols],
+  caption: [Summary of Analytical Model\ Dimensions and Symbols],
   styled-table(
     columns: (auto, auto),
     inset: 10pt,

@@ -1,7 +1,7 @@
 #import "../../template/template.typ": *
 
 #figure(
-  caption: [Expected MACs for Standard Transformer Layer (MHA)],
+  caption: [Expected MACs for Standard\ Transformer Layer (MHA)],
   styled-table(
     columns: (auto, auto, auto),
     inset: 10pt,

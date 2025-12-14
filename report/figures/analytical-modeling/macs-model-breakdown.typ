@@ -1,7 +1,7 @@
 #import "../../template/template.typ": *
 
 #figure(
-  caption: [SmolVLA Computational Breakdown (Estimated)],
+  caption: [SmolVLA Computational Breakdown\ (Estimated)],
   styled-table(
     columns: (auto, auto, auto, auto),
     inset: 10pt,
