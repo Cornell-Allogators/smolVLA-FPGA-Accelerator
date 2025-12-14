@@ -35,12 +35,12 @@ Comparing this to our analytical modeling in Section 3, the Roofline model predi
 
 To understand the contribution of individual optimizations, we conducted an ablation study summarizing the progression from a baseline implementation to our final architecture. The results are presented in @tab:attention-ablation.
 
-#include "../figures/evaluation/attention-ablation.typ"
-
 As shown in the table:
 - *Baseline*: The initial untiled implementation was functionally correct but extremely slow due to inefficient memory access patterns.
 - *Tiling*: Applying loop tiling significantly reduced latency by improving data locality, but performance was still limited by the sequential execution of the QKV and SDP stages.
 - *Dataflow (Systolic)*: The most significant gain came from enabling the Dataflow architecture and increasing the parallelization factors (P-Factors). Moving to a streaming architecture (Dataflow: True) allowed us to overlap the QKV projection with the Softmax computation. Increasing the QKV P-Factor to 16 and SDP P-Factor to 8 reduced the latency to the final 17.81 ms, although this came at the cost of near-total DSP utilization. This confirms that spatial parallelism is critical for accelerating attention on FPGAs.
+
+#include "../figures/evaluation/attention-ablation.typ"
 
 /**********************************************************/
 

@@ -4,6 +4,6 @@
   caption: [ *Latency vs DSP Usage.* Comparison of latency and DSP usage across different parallelism factors.],
   image(
     "latency_vs_dsp.svg",
-    width: 60%
+    width: 60%,
   ),
 )
