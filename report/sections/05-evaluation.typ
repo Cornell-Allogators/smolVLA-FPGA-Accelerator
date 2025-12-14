@@ -15,6 +15,10 @@
   - Compare against the analytical model predictions.
 ]
 
+#include "../figures/latency-vs-bram/latency-vs-bram.typ"
+
+#include "../figures/latency-vs-dsps/latency-vs-dsp.typ"
+
 === Ablation
 
 #todo(Ezra, done: 0%)[
