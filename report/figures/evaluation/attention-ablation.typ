@@ -5,7 +5,7 @@
   kind: table,
   styled-table(
     columns: 6,
-    table.header([Dataflow], [QKV P-Factor], [SDP P-Factor], [Latency (ms)], [BRAM %], [DSP %]),
+    table.header([Dataflow], [SDP\ P-Factor], [QKV\ P-Factor], [Latency (ms)], [BRAM %], [DSP %]),
     [False],
     [1],
     [1],
