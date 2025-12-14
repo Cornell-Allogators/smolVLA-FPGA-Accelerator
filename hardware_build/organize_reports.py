@@ -6,8 +6,8 @@ import sys
 def organize_reports():
     # Define source and destination directories
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    build_dir = os.path.join(base_dir, 'build')
-    shortened_build_dir = os.path.join(base_dir, 'shortned_build')
+    build_dir = os.path.join(base_dir, 'ablation_fixed_output')
+    shortened_build_dir = os.path.join(base_dir, 'shortned_ablation_fixed')
 
     # Create destination directory if it doesn't exist
     if not os.path.exists(shortened_build_dir):
@@ -66,6 +66,13 @@ def organize_reports():
                 if has_kernel:
                     shutil.copy2(kernel_src, os.path.join(dest_dir, 'kernel.cpp'))
                     print(f"  Copied kernel.cpp")
+                    copied_files += 1
+
+                # Copy solution1.log
+                log_src = os.path.join(item_path, 'out.prj', 'solution1', 'solution1.log')
+                if os.path.exists(log_src):
+                    shutil.copy2(log_src, os.path.join(dest_dir, 'solution1.log'))
+                    print(f"  Copied solution1.log")
                     copied_files += 1
                 
                 print(f"  Total copied files: {copied_files}")

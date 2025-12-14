@@ -7,6 +7,7 @@ import self_attention
 from datetime import datetime
 from pathlib import Path
 import sys
+import concurrent.futures
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from attention.config import VLMAttentionConfig as VAC
 import allo.library.systolic as sys
@@ -57,55 +58,65 @@ def schedule_self_attention(
     s.build(target="vitis_hls", mode="csyn", project=project_name)()
     
 
+def run_ablation_point(P, P_2, dataflow, N_T, A_T, mode):
+    P_s = 4
+    s = allo.customize(sa_2, instantiate=[
+        A_T,   # Kernel data type
+        L,     # Token Length 
+        H,     # Number of Heads
+        H*D_h, # Embedding Length
+        D_h,   # Head Embedding Length
+        P_2*P,     # Parallelism factor - SDPA
+        P_s    # Summation parallelism factor - SDPA
+    ])
+    
+    loops = s.get_loops()
+    outer_loop = loops["head_loop"]
+    s.unroll(outer_loop["k_precalc"], factor=P)  # Unroll summation loop
+    for pipeline_loop in [
+        "k_precalc",
+        "j_attn",
+        "j_exp_P_s",
+        "j_norm",
+        "j_out",
+        "i_final"
+    ]:
+        s.pipeline(outer_loop[pipeline_loop])
+    
+    if dataflow: 
+        for dataflow_loop in ["h1", "i_out"]:
+            s.dataflow(outer_loop[dataflow_loop])    
+    
+    dtype_str = {
+        int4: "int4", int8: "int8",
+        float32: "float32",
+        bfloat16: "bfloat16"
+    }[A_T]
+
+    s.build(
+        target="vitis_hls", 
+        mode="csyn", 
+        project=f"final_result_dataflow_{dataflow}_P_{P_2*P}_int8_{P}.prj"
+    )()
+
 def schedule_self_attention_row_parallelism(
     N_T: np.dtype,
     A_T: allo.ir.types,
     mode: str = "csyn",
     should_return=False
 ):
-    P_s = 4  
-    for P in [1, 2, 4, 8]:
-        for P_2 in [1, 2]:
-            for dataflow in [True, False]:
-                s = allo.customize(sa_2, instantiate=[
-                    A_T,   # Kernel data type
-                    L,     # Token Length 
-                    H,     # Number of Heads
-                    H*D_h, # Embedding Length
-                    D_h,   # Head Embedding Length
-                    P,     # Parallelism factor - SDPA
-                    P_s    # Summation parallelism factor - SDPA
-                ])
-                
-                loops = s.get_loops()
-                outer_loop = loops["head_loop"]
-                s.unroll(outer_loop["k_precalc"], factor=P_2*P)  # Unroll summation loop
-                for pipeline_loop in [
-                    "k_precalc",
-                    "j_attn",
-                    "j_exp_P_s",
-                    "j_norm",
-                    "j_out",
-                    "i_final"
-                ]:
-                    s.pipeline(outer_loop[pipeline_loop])
-                
-                if dataflow: 
-                    for dataflow_loop in ["h1", "i_out"]:
-                        s.dataflow(outer_loop[dataflow_loop])    
-                
-                dtype_str = {
-                    int4: "int4", int8: "int8",
-                    float32: "float32",
-                    bfloat16: "bfloat16"
-                }[A_T]
-
-
-    s.build(
-        target="vitis_hls", 
-        mode="csyn", 
-        project=f"final_result_dataflow_{dataflow}_P_{P}_int8_{P_2*P}.prj"
-    )()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+        futures = []
+        for P in [1, 2, 4, 8]:
+            for P_2 in [1, 2]:
+                for dataflow in [True, False]:
+                    futures.append(executor.submit(run_ablation_point, P, P_2, dataflow, N_T, A_T, mode))
+        
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                print(f"An error occurred: {e}")
 
 def schedule_layer_norm(
     N_T: np.dtype,

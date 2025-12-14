@@ -26,7 +26,7 @@ def self_attention[
     W_v: "T[H, D_h, D]",
     W_o: "T[H, D_h, D]",
     scale: "float32", #takes the value of 8
-    out: "T[L, D]"
+    out: "int32[L, D]"
 ):
     # ===== QKV Projection Stage =====
     
@@ -98,7 +98,11 @@ def self_attention[
                     weight: "T" = W_o[h1, k_final, i_final]
                     for p_final in allo.grid(P, name="p_final_loop"):
                         val: "int32" = acc_out[p_final, k_final]
-                        out[i_out*P + p_final, i_final] = (val >> 15) * weight
+                        mult_val: "int32" = (val >> 15) * weight
+                        if h1 == 0:
+                            out[i_out*P + p_final, i_final] = mult_val
+                        else:
+                            out[i_out*P + p_final, i_final] += mult_val
                         
 
 
@@ -108,7 +112,7 @@ def layer_norm[
     L: int16,
     D: int16
 ](
-    x: "T[L, D]",
+    x: "int32[L, D]",
     gamma: "T[D]",
     beta: "T[D]",
     x_out: "T[L, D]"
@@ -160,7 +164,7 @@ def self_attention_return[
     beta: "T[D]",
     x_ln: "T[L, D]"
 ):
-    out: "T[L, D]"
+    out: "int32[L, D]"
     self_attention[T, L, H, D, D_h, P, P_s, "sa1"](X, W_q, W_k, W_v, W_o, scale, out)
     layer_norm[T, L, D, "layer_norm2"](out, gamma,  beta, x_ln)
 
