@@ -26,7 +26,7 @@ A more accurate projection of achievable latency is approximately 20ms per atten
 
 == Performance of MLP
 
-#todo(Stanley, done: 99%)[
+#todo(Stanley, done: 100%)[
   *MLP Insights*:
   - Discuss the specific challenges of the MLP layers (large weight matrices).
   - Resource trade-offs found during implementation.
