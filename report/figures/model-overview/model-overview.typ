@@ -5,6 +5,6 @@
   ],
   image(
     "model-overview.svg",
-    width: 40%,
+    width: 80%,
   ),
 ) <fig:model-overview>
