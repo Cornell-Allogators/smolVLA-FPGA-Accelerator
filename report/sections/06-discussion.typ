@@ -21,6 +21,11 @@ When designing our kernels one of the limiting factors was lack of HBM control i
 
 As seen in @tab:attention-ablation when pipelining with an $"II" = 1$ we achieved a base cycle time of $\~188"ms"$ for the self attention layers. To put this in perspective, a single layer of multi-head self-attention with $L=1024$, $H=12$, $D=768$, and $D_h=64$ requires approximately 4 billion operations (counting multiplies and adds). Specifically, the Linear Projections ($3 times H times L times D times D_h$) and the Output Projection ($H times L times D times D_h$) contribute roughly 2.4 billion operations, while the Attention Scores and Context computation ($2 times H times L^2 times D_h$) contribute another 1.6 billion.
 
+#if not use-appendix {
+  include "../figures/evaluation/ops-breakdown.typ"
+}
+
+
 With a base latency of 80M cycles, our accelerator sustains approximately 50 operations per cycle at $P=1$. This efficiency stems from unrolling the head embedding dimension ($D_h=64$) and pipelining the token loops. As we increase the parallelism factor $P$, we effectively process $P$ token rows simultaneously, theoretically reducing the cycle count by a factor of $P$. However, as shown in the ablation study, memory bandwidth and control logic overheads lead to diminishing returns at higher $P$ values.
 
 When applying the dataflow we described earlier we reduce the latency to 66ms with only a 2% increase DSP utilization and 10% BRAM utilization. This is to be expected as a dataflow simply adds buffers between kernels to allow for an inter-kernel pipeline.
