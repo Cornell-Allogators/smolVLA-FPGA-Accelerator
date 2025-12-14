@@ -10,6 +10,8 @@
   - Referenced `roofline_analysis/roofline_critique.md` for methodology.
 ]
 
+
+
 /**********************************************************/
 
 
@@ -56,22 +58,26 @@ Crucially, for the *Action Expert*, we utilize a static optimization for the Cro
   - Explain how data types (int8 vs fp32) affect this.
 ]
 
+
+
 Fundamentally, most operations in SmolVLA can be reduced to matrix operations. These operations can in turn be broken down into multiply and accumulate steps, commonly called multiply and accumulate operations, or MACs. A naïve approach is to implement all of these operations directly in the FPGA fabric, synthesizing them into LUTs and flip-flops. However, this can be highly inefficient because floating-point operations often require thousands of LUTs and flip-flops.
 
-One way to reduce this overhead is to use lower-precision datatypes. The default floating-point format is FP32, which uses a whopping 4 bytes per value. By quantizing the model to FP16, bfloat16, FP8, or even FP4, we can significantly reduce memory usage while maintaining acceptable precision. Another approach is to convert the relatively complex FP32 values into integers. Integer ALUs require far fewer hardware resources than their floating-point counterparts, which makes them an appealing option for acceleration.
+One way to reduce this overhead is to use lower-precision datatypes. The default floating-point format is FP32, which uses 4 bytes per value. By quantizing the model to FP16, bfloat16, FP8, or even FP4, we can significantly reduce memory usage while maintaining acceptable precision. Another approach is to convert the relatively complex FP32 values into integers. Integer ALUs require far fewer hardware resources than their floating-point counterparts, which makes them an appealing option for acceleration.
 
-Another technique we use is mapping our MAC operations to DSP slices, which are hardened blocks on the FPGA designed to perform multiply and accumulate operations every cycle when pipelined. This saves valuable hardware resources and allows larger, more complex designs. On the AMD Alveo U280, there are 9,024 DSP slices, which means we can process at least 9,024 MAC operations per clock cycle with full utilization. However, we can use instantiate "soft" FPUs/ALUs on the LUT fabric, or we can use bit packing tricks to do up to 4 int4 MACs per clock cycle per DSP.
+Another technique we use is mapping our MAC operations to DSP slices, which are hardened blocks on the FPGA designed to perform multiply and accumulate operations every cycle when pipelined. This saves valuable hardware resources and allows larger, more complex designs. On the AMD Alveo U280, there are 9,024 DSP slices, which means we can process at least 9,024 MAC operations per clock cycle with full utilization. However, we can instantiate "soft" FPUs/ALUs on the LUT fabric, or we can use bit packing tricks to do up to 4 int4 MACs per clock cycle per DSP.
 
-*TODO*: Add what the maximum MACs throughput on the U280
+
 
 === Memory Capacity Constraints
-
 
 #todo(Ezra, done: 99%)[
   *On-chip Memory*:
   - Analyze HBM vs BRAM/URAM usage.
   - Discuss buffering strategies for weights/activations.
 ]
+
+
+
 
 *Memory Footprint Analysis*
 
@@ -89,6 +95,8 @@ We analyze the storage requirements to determine where data must reside. The ori
   - Mention array partitioning directives used in Allo.
 ]
 
+
+
 Port/Bank Conflicts: While High Bandwidth Memory (HBM) offers massive theoretical throughput, achieving this peak performance requires careful management of memory ports. The U280 FPGA fabric interacts with memory via physical ports; if multiple parallel processing elements (PEs) attempt to access the same BRAM or URAM bank simultaneously, a port conflict occurs, stalling the pipeline. This is particularly critical in our design where we aim to unroll loops to maximize parallelism.
 
 To mitigate this, we heavily utilize Allo’s partition() scheduling primitive. By applying array partitioning, specifically cyclic and block partitioning, we split large tensors across multiple physical memory banks. This ensures that when the HLS compiler unrolls a loop (e.g., processing 4 elements of a vector simultaneously), each access maps to a distinct physical port, allowing for conflict-free parallel reads and writes. Without this partitioning, the effective bandwidth would be throttled by the limited number of read/write ports (typically two) per memory block, nullifying the benefits of our spatial architecture.
@@ -97,7 +105,7 @@ To mitigate this, we heavily utilize Allo’s partition() scheduling primitive. 
 
 *Theoretical Data Transfer Analysis*
 
-Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the large model size (approx. 180MB for weights), we assume a *layer-by-layer* execution model where weights must be streamed from HBM for each layer. For the Vision and VLM components, this means reading weights once per inference. However, for the *Action Expert*, the 10-step diffusion process requires re-streaming the dynamic weights 10 times, leading to a massive memory bandwidth demand.
+Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the large model size (approx. 382MB for weights), we assume a *layer-by-layer* execution model where weights must be streamed from HBM for each layer. For the Vision and VLM components, this means reading weights once per inference. However, for the *Action Expert*, the 10-step diffusion process requires re-streaming the dynamic weights 10 times, leading to a massive memory bandwidth demand.
 
 #include "../figures/analytical-modeling/mem-transfer.typ"
 
@@ -108,7 +116,7 @@ Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the
 
 == Performance Estimation
 
-\To evaluate the feasibility of our design on the Alveo U280, we first calculate the Operational Intensity (OI) for each major component. As summarized in @tab:oi-analysis, the Vision Encoder, VLM Backbone, and Action Expert all exhibit high operational intensities.
+To evaluate the feasibility of our design on the Alveo U280, we first calculate the Operational Intensity (OI) for each major component. As summarized in @tab:oi-analysis, the Vision Encoder, VLM Backbone, and Action Expert all exhibit high operational intensities.
 
 #include "../figures/analytical-modeling/oi-analysis.typ"
 
@@ -119,18 +127,4 @@ We visualize these characteristics against the hardware limits in the Roofline m
 *Analysis*:
 The Roofline analysis reveals that all three components of SmolVLA sit well to the right of the U280's ridge point (\~11.8 Ops/Byte). This indicates that the design is fundamentally *compute-bound*, limited by the DSP processing power rather than HBM bandwidth. The *Vision Encoder* is extremely compute-bound (OI \~2048), suggesting that optimizing for DSP utilization (e.g., using systolic arrays) will yield direct performance gains. Similarly, the *Action Expert*, while having a lower OI (\~103) due to the requisite weight reloading for the diffusion process, remains in the compute-bound regime. However, it operates significantly closer to the memory wall; any inefficiency in the memory controller could easily shift this component into a bandwidth-bound regime.
 
-// === Latency Estimation
 
-// #todo(Ezra, done: 0%)[
-//   *Latency Breakdown*:
-//   - Estimate latency per layer.
-//   - Identify the bottleneck layer (Communication vs Computation).
-// ]
-
-// === Work Balancing
-
-// #todo(Sam, done: 0%)[
-//   *Load Balancing*:
-//   - Discuss pipelining efficiency.
-//   - Analyze if any stage is a significant bottleneck.
-// ]

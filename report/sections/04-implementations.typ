@@ -15,6 +15,8 @@
   - Discuss the systolic array implementation if applicable.
 ]
 
+
+
 Our accelerator implementation leverages Allo to decouple the functional definition of the SmolVLA layers from their hardware execution schedules. The kernels are written in a Python-based DSL that mimics standard PyTorch syntax, ensuring functional correctness and ease of testing.
 
 The general structure of our kernels follows a three-stage workflow:
@@ -39,9 +41,11 @@ For computationally intensive operations like matrix multiplication, we also exp
 ]
 
 
+
+
 #include "../figures/per-head-loop/per-head-loop.typ"
 
-The Self-Attention mechanism is about 50% of the vision encoder and can many times be the bottleneck of the Vision Encoder. Our implementation targets the core equation: $"Attention"(Q, K, V) = "softmax"(Q K^T)/sqrt(d_k)V$. Our design optimizes optimizes for a spatial architecture of a single head of self-attention instead of multi head parallelism. This is due to the limited on-chip memory of the Alveo U280 and the benefits of a dataflow through the softmax.
+The Self-Attention mechanism is roughly 50% of the vision encoder and can often be the bottleneck. Our implementation targets the core equation: $"Attention"(Q, K, V) = "softmax"(Q K^T)/sqrt(d_k)V$. Our design optimizes for a spatial architecture of a single head of self-attention rather than exploiting multi-head parallelism. This design choice is driven by the limited on-chip memory of the Alveo U280 and the benefits of a dataflow architecture through the softmax.
 
 Per head our flow goes as follows:
 
@@ -91,6 +95,8 @@ The most significant challenge in hardware is the Softmax function. Standard Sof
   FILL IN THE ERF FORMULA
 ]
 
+
+
 The MLP pipeline comprises a fully connected (FFN) layer followed by a Gaussian Error Linear Unit (GELU) non-linear activation function. We selected GELU over other common activation functions primarily for its smoothness and differentiability, which improve stability and information preservation in smaller models. The output is then passed to a second fully connected layer before entering the layer normalization stage.
 
 #include "../figures/mlp-layers/mlp-layers.typ"
@@ -112,7 +118,7 @@ Simpler approximations exist, such as the sigmoid approximation. $ "GELU"(x) app
 === Systolic Arrays
 #include "../figures/systolic-array/systolic-array.typ"
 
-For the matrix multiplications, the standard way to execute these are by unrolling and pipelining the triple nested loop. We will also experiment with a systolic array based implementation. With this approach, data is injected into the edge processing elements, and then only moves between processing elements. This reduces the amount of data movement needed between the memory/buffers, helping increasing utilization of all of the DSPs on the FPGA.
+For the matrix multiplications, the standard way to execute these is by unrolling and pipelining the triple nested loop. We will also experiment with a systolic array based implementation. With this approach, data is injected into the edge processing elements, and then only moves between processing elements. This reduces the amount of data movement needed between the memory/buffers, helping increasing utilization of all of the DSPs on the FPGA.
 
 #include "../figures/mlp-packed/mlp-packed.typ"
 

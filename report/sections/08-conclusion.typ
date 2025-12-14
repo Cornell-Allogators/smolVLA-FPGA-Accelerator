@@ -11,6 +11,8 @@
   - Conclude on the viability of FPGAs for SmolVLA edge deployment.
 ]
 
+
+
 This project demonstrated the design and implementation of an FPGA-based accelerator for the SmolVLA Vision Encoder using the Allo framework. By analyzing the computational demands, we identified that the workload is fundamentally compute-bound, requiring efficient utilization of the U280's DSP slices.
 
 Our key contributions include:
