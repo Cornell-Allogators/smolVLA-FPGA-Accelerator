@@ -52,6 +52,8 @@ Our MACs calculation assumes per-image processing for the Vision Encoder with an
 
 Based on the parameters derived from the codebase and the specific configuration for this deployment (Single Camera, 113 VLM tokens), we calculate the total Multiply-Accumulate (MAC) operations per inference, as shown in @tab:macs-breakdown.
 
+We also calculated the total MACs breakdown in the vision encoder @tab:ops-breakdown to determine optimal resource allocation within the sub kernels.
+
 Crucially, for the *Action Expert*, we utilize a static optimization for the Cross-Attention layers: the Key and Value matrices for the VLM context are computed *once* per inference, as the context remains static across the 10 diffusion steps. Only the Query projections and the attention scores/updates are computed dynamically at each step. The Action Expert uses $H_q=12, H_("kv")=4, D_h=80$, while the VLM Backbone uses $H_q=15, H_("kv")=5, D_h=64$.
 
 #if not use-appendix {

@@ -32,6 +32,10 @@
 
     #v(1em)
 
+    #include "../figures/analytical-modeling/ops-breakdown.typ"
+
+    #v(1em)
+
     #include "../figures/analytical-modeling/mem-footprint.typ"
 
     #v(1em)
