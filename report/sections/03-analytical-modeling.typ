@@ -82,7 +82,7 @@ Another technique we use is mapping our MAC operations to DSP slices, which are 
 
 === Memory Capacity Constraints <subsubsec:mem-capacity>
 
-#todo(Ezra, done: 99%)[
+#todo(Ezra, done: 100%)[
   *On-chip Memory*:
   - Analyze HBM vs BRAM/URAM usage.
   - Discuss buffering strategies for weights/activations.
@@ -95,7 +95,7 @@ Another technique we use is mapping our MAC operations to DSP slices, which are 
 
 We analyze the storage requirements to determine where data must reside. The original model weights in `bfloat16` precision occupy approx. 764 MB. By quantizing to `int8`, we reduce the total model footprint to *382 MB*. This still exceeds the U280's on-chip capacity (\~40-50 MB), mandating off-chip HBM storage.
 
-*Note on On-Chip Buffers*: To maximize throughput, we must hide the latency of HBM access by pre-fetching weights. Our analytical model estimates a requirement of approximately *4 MB* for partitioned activation buffers and *16 MB* for double-buffered weight storage (per layer), totaling an allocated budget of *\~20 MB*, as detailed in @tab:mem-footprint. This fits comfortably within the U280's available BRAM/URAM resources (\~43 MB).
+*Note on On-Chip Buffers*: To maximize throughput, we must hide the latency of HBM access by pre-fetching weights. Our analytical model estimates a requirement of approximately *4 MB* for partitioned activation buffers and *16 MB* for double-buffered weight storage (per layer), totaling an allocated budget of *\~20 MB*, as detailed in @tab:mem-footprint. This fits within the U280's available BRAM/URAM resources (\~43 MB).
 
 #if not use-appendix {
   include "../figures/analytical-modeling/mem-footprint.typ"
@@ -103,7 +103,7 @@ We analyze the storage requirements to determine where data must reside. The ori
 
 === Memory Port Constraints <subsubsec:mem-ports>
 
-#todo(Ezra, done: 90%)[
+#todo(Ezra, done: 100%)[
   *Port/Bank Conflicts*:
   - Explain HLS partitioning constraints.
   - Mention array partitioning directives used in Allo.
@@ -111,22 +111,9 @@ We analyze the storage requirements to determine where data must reside. The ori
 
 
 
-Port/Bank Conflicts: While High Bandwidth Memory (HBM) offers massive theoretical throughput, achieving this peak performance requires careful management of memory ports. The U280 FPGA fabric interacts with memory via physical ports; if multiple parallel processing elements (PEs) attempt to access the same BRAM or URAM bank simultaneously, a port conflict occurs, stalling the pipeline. This is particularly critical in our design where we aim to unroll loops to maximize parallelism.
+Port/Bank Conflicts: While High Bandwidth Memory (HBM) offers massive theoretical throughput, achieving this peak performance requires careful management of memory ports. The U280 FPGA fabric interacts with memory via physical ports; if multiple parallel processing elements (PEs) attempt to access the same BRAM or URAM bank simultaneously, a port conflict occurs, stalling the pipeline. This is particularly critical in our design where we aim to unroll loops to maximize parallelism. The U280 has 2 ports per 36Kb BRAM/URAM block and 2 ports per 288Kb URAM block.
 
 To mitigate this, we heavily utilize Allo’s partition() scheduling primitive. By applying array partitioning, specifically cyclic and block partitioning, we split large tensors across multiple physical memory banks. This ensures that when the HLS compiler unrolls a loop (e.g., processing 4 elements of a vector simultaneously), each access maps to a distinct physical port, allowing for conflict-free parallel reads and writes. Without this partitioning, the effective bandwidth would be throttled by the limited number of read/write ports (typically two) per memory block, nullifying the benefits of our spatial architecture.
-
-=== Memory Bandwidth Constraints <subsubsec:mem-bw>
-
-*Theoretical Data Transfer Analysis*
-
-Due to the limited on-chip memory of the U280 (approx. 40-50MB URAM+BRAM) vs the large model size (approx. 382MB for weights), we assume a *layer-by-layer* execution model where weights must be streamed from HBM for each layer. For the Vision and VLM components, this means reading weights once per inference. However, for the *Action Expert*, the 10-step diffusion process requires re-streaming the dynamic weights 10 times, leading to a massive memory bandwidth demand.
-
-#if not use-appendix {
-  include "../figures/analytical-modeling/mem-transfer.typ"
-}
-
-*Analysis*: As shown in @tab:mem-transfer, the Action Expert accounts for over 80% of the total off-chip data transfer. With a realistic HBM bandwidth of \~300 GB/s, the memory transfer alone sets a hard lower bound on latency of approx. 4.6 ms ($937 / 300 " GB/s"$), not accounting for compute or latency hiding.
-
 
 /**********************************************************/
 
