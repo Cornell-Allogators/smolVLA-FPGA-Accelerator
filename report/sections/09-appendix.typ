@@ -5,16 +5,16 @@
 #if (use-appendix) [
   #pagebreak()
 
-  = Appendix
+  = Appendix <sec:appendix>
 
-  == Figures and Tables
+  == Figures and Tables <subsec:appendix-figs>
 
-  === Background
+  === Background <subsubsec:app-background>
   #include "../figures/model-overview/model-overview.typ"
 
   #v(1em)
 
-  === Analytical Modeling
+  === Analytical Modeling <subsubsec:app-modeling>
 
   #v(1em)
 
@@ -48,7 +48,7 @@
 
   #include "../figures/roofline-analysis/roofline-analysis.typ"
 
-  === Implementation
+  === Implementation <subsubsec:app-impl>
   #include "../figures/per-head-loop/per-head-loop.typ"
 
   #v(1em)
@@ -71,7 +71,7 @@
 
   #include "../figures/mlp-packed/mlp-packed.typ"
 
-  === Evaluation
+  === Evaluation <subsubsec:app-eval>
   #include "../figures/latency-vs-bram/latency-vs-bram.typ"
 
   #v(1em)

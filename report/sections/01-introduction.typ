@@ -2,7 +2,7 @@
 
 /**********************************************************/
 
-= Introduction
+= Introduction <sec:intro>
 
 #todo(Ezra, done: 100%)[
   *Project Context*:

@@ -2,7 +2,7 @@
 
 /**********************************************************/
 
-= Conclusion
+= Conclusion <sec:conclusion>
 
 #todo(Sam, done: 100%)[
   *Final Remarks*:
