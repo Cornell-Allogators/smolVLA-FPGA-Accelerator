@@ -1,4 +1,4 @@
-#import "../../template/table.typ": styled-table
+#import "../../template/template.typ": *
 
 #figure(
   styled-table(
